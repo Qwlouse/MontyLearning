@@ -20,19 +20,19 @@ class ConnectionLayer(object):
 
 class FullConnection(ConnectionLayer):
     def __init__(self, input_size, output_size):
-        self.weights = np.random.randn(output_size, input_size)
+        self.weights = np.random.randn(input_size, output_size)
 
     def input_size(self):
-        return self.weights.shape[1]
-
-    def output_size(self):
         return self.weights.shape[0]
 
+    def output_size(self):
+        return self.weights.shape[1]
+
     def pass_forward(self, X):
-        return self.weights.dot(X)
+        return X.dot(self.weights)
 
     def pass_backward(self, Y):
-        return self.weights.T.dot(Y)
+        return Y.dot(self.weights.T)
 
     def calculate_gradient(self, X, delta):
         return -np.outer(delta, X)
@@ -49,10 +49,8 @@ class FullConnection(ConnectionLayer):
 
 
 def add_bias(X):
-    if len(X.shape) == 1 :
-        return np.hstack((X, [1.]))
-    else:
-        return np.hstack((X, np.ones((X.shape[0], 1))))
+    X = np.atleast_2d(X)
+    return np.hstack((X, np.ones((X.shape[0], 1))))
 
 class FullConnectionWithBias(FullConnection):
     def __init__(self, input_size, output_size):
