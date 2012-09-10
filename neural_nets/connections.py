@@ -8,11 +8,9 @@ class ConnectionLayer(object):
     """
     Base class for all connections.
     """
-    @property
     def input_size(self):
         raise NotImplementedError()
 
-    @property
     def output_size(self):
         raise NotImplementedError()
 
@@ -59,6 +57,9 @@ def add_bias(X):
 class FullConnectionWithBias(FullConnection):
     def __init__(self, input_size, output_size):
         super(FullConnectionWithBias, self).__init__(input_size + 1, output_size)
+
+    def input_size(self):
+        return FullConnection.input_size(self) - 1
 
     def pass_forward(self, X):
         return FullConnection.pass_forward(self, add_bias(X))
