@@ -50,8 +50,11 @@ class FullConnection(ConnectionLayer):
                 self.weights[r,c] = w
 
 
-def add_bias(x):
-    return np.hstack((x, [1.]))
+def add_bias(X):
+    if len(X.shape) == 1 :
+        return np.hstack((X, [1.]))
+    else:
+        return np.hstack((X, np.ones((X.shape[0], 1))))
 
 class FullConnectionWithBias(FullConnection):
     def __init__(self, input_size, output_size):
