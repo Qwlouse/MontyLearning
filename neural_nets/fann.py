@@ -2,12 +2,13 @@
 # coding: utf-8
 from __future__ import division, unicode_literals, print_function
 import numpy as np
+from functions import sigmoid
 
 class FANN(object):
     """
     A Functional Artificial Neural Network.
       * 1 layer
-      * linear output
+      * sigmoid output
       * no bias
     """
     def __init__(self, input_size, output_size):
@@ -23,7 +24,7 @@ class FANN(object):
         neural network on the data X.
         """
         W = self.unpack(theta)
-        return X.dot(W)
+        return sigmoid(X.dot(W))
 
     def calculate_error(self, theta, X, T):
         Y = self.forward_pass(theta, X)
@@ -31,7 +32,7 @@ class FANN(object):
 
     def calculate_gradient(self, theta, X, T):
         Y = self.forward_pass(theta, X)
-        deltas = T - Y
+        deltas = (T - Y) * Y * (1 - Y)
         X = np.atleast_2d(X)
         grad = -X.T.dot(deltas)
         return grad.reshape(-1), Y, deltas

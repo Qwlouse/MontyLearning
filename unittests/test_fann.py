@@ -6,11 +6,12 @@ from scipy.optimize import approx_fprime
 from helpers import *
 
 from neural_nets.fann import FANN
+from neural_nets.functions import sigmoid
 
 theta = np.array([[-1, 1, 0, 1]]).reshape(-1)
 X = np.array([[0, 0, 0, 1], [1, 0, 0, 1],[0, 1, 0, 1],[0, 0, 1, 1],[1, 1, 0, 1]])
-T = np.array([[1, 0, 2, 1, 1]]).T
-E = np.array([[0.5, 0, 2, 0.5, 0.5]]).T
+T = sigmoid(np.array([[1, 0, 2, 1, 1]]).T)
+E = 0.5 * T**2
 
 def test_FANN_dimensions():
     nn = FANN(5, 1)
@@ -35,7 +36,7 @@ def test_FANN_feed_forward_multisample():
 def test_FANN_error_multisample():
     nn = FANN(4, 1)
     assert_equal(nn.calculate_error(theta, X, T), 0.0)
-    assert_equal(nn.calculate_error(theta, X, np.zeros_like(T)), 3.5)
+    assert_equal(nn.calculate_error(theta, X, np.zeros_like(T)), np.sum(E))
 
 def test_FANN_gradient_single_sample():
     nn = FANN(4, 1)
