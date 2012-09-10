@@ -11,14 +11,14 @@ def load_xor():
     xor.DESCR = "The XOR function from logic. A Toy Example for Neural Networks. "\
                 "Needs at least two hidden units."
     xor.data = np.array([[0,0],[0,1],[1,0],[1,1]])
-    xor.target = np.array([0, 1, 1, 0])
+    xor.target = np.array([[0, 1, 1, 0]]).T
     return xor
 
 def load_and():
     and_ = Bunch()
     and_.DESCR = "The AND function from logic. A Toy Example for Neural Networks. "
     and_.data = np.array([[0,0],[0,1],[1,0],[1,1]])
-    and_.target = np.array([0, 1, 1, 1])
+    and_.target = np.array([[0, 1, 1, 1]]).T
     return and_
 
 def generate_majority_vote(n = 200, m = 9):

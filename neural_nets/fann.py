@@ -8,7 +8,6 @@ class FANN(object):
     """
     A Functional Artificial Neural Network.
       * 1 layer
-      * sigmoid output
       * no bias
     """
     def __init__(self, input_size, output_size):
