@@ -14,15 +14,28 @@ class FANN(object):
         self.output_size = layers[-1].output_dim
         self.layers = layers
 
+    def __len__(self):
+        dim = 0
+        for l in self.layers:
+            dim += len(l)
+        return dim
+
+    def slice_theta(self, theta):
+        slices = []
+        theta_offset = 0
+        for layer in self.layers:
+            param_dim = len(layer)
+            slices.append(theta[theta_offset:theta_offset + param_dim])
+            theta_offset += param_dim
+        return slices
+
     def forward_pass(self, theta, X):
         """
         Using the parameters theta as the weights evaluate this feed-forward
         neural network on the data X returning only the outcome.
         """
-        activation = X
-        for layer in self.layers:
-            activation = sigmoid(layer.forward_pass(theta, activation))
-        return activation
+        # NOTE: This method might be optimized
+        return self.full_forward_pass(theta, X)[-1]
 
     def full_forward_pass(self, theta, X):
         """
@@ -30,8 +43,8 @@ class FANN(object):
         neural network on the data X returning the full list of activations.
         """
         activations = [X]
-        for layer in self.layers:
-            activations.append(sigmoid(layer.forward_pass(theta, activations[-1])))
+        for layer, th in zip(self.layers, self.slice_theta(theta)):
+            activations.append(sigmoid(layer.forward_pass(th, activations[-1])))
         return activations
 
     def calculate_error(self, theta, X, T):
@@ -43,12 +56,13 @@ class FANN(object):
         Y = activations[-1]
         delta = (T - Y) * Y * (1 - Y) #sigmoid
         grad_theta = self.layers[-1].calculate_gradient(activations[-2], delta).reshape(-1)
+        theta_slices = self.slice_theta(theta)
         for i in range(len(self.layers) - 1, 0, -1):
             a = activations[i]
             layer = self.layers[i]
-            delta = layer.pass_down(delta) * a * (1 - a) #sigmoid
+            delta = layer.backward_pass(theta_slices[i], delta) * a * (1 - a) #sigmoid
             grad = layer.calculate_gradient(a, delta)
-            grad_theta = np.hstack((grad_theta, grad.reshape(-1)))
+            grad_theta = np.hstack((grad.reshape(-1), grad_theta))
         return grad_theta
 
 
