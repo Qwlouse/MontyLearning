@@ -92,7 +92,7 @@ def test_FANN_gradient_multisample():
     grad_e = approx_fprime(theta, nn.calculate_error, 1e-8, X, np.zeros_like(T))
     assert_almost_equal(grad_c, grad_e)
 
-def test_FANN_gradient_multisample():
+def test_FANN_with_bias_gradient_multisample():
     nn = FANN(3, 1, include_bias=True)
     grad_c, _, _ = nn.calculate_gradient(theta, X_nb, T)
     grad_e = approx_fprime(theta, nn.calculate_error, 1e-8, X_nb, T)
