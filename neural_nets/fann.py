@@ -3,19 +3,23 @@
 from __future__ import division, unicode_literals, print_function
 import numpy as np
 from functions import sigmoid
+from helpers import add_bias
+
 
 class FANN(object):
     """
     A Functional Artificial Neural Network.
       * 1 layer
-      * no bias
     """
-    def __init__(self, input_size, output_size):
+    def __init__(self, input_size, output_size, include_bias=False):
         self.input_size = input_size
         self.output_size = output_size
+        self.include_bias = include_bias
 
     def unpack(self, theta):
-        return theta.reshape(self.input_size, self.output_size)
+        return theta.reshape(
+            self.input_size  + (1 if self.include_bias else 0),
+            self.output_size)
 
     def forward_pass(self, theta, X):
         """
@@ -23,6 +27,9 @@ class FANN(object):
         neural network on the data X.
         """
         W = self.unpack(theta)
+        X = np.atleast_2d(X)
+        if self.include_bias:
+            X = add_bias(X)
         return sigmoid(X.dot(W))
 
     def calculate_error(self, theta, X, T):
@@ -33,5 +40,7 @@ class FANN(object):
         Y = self.forward_pass(theta, X)
         deltas = (T - Y) * Y * (1 - Y)
         X = np.atleast_2d(X)
+        if self.include_bias:
+            X = add_bias(X)
         grad = -X.T.dot(deltas)
         return grad.reshape(-1), Y, deltas
