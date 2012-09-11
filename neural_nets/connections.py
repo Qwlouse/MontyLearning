@@ -2,6 +2,7 @@
 # coding: utf-8
 from __future__ import division, unicode_literals, print_function
 import numpy as np
+from neural_nets.helpers import add_bias
 
 
 class ConnectionLayer(object):
@@ -46,11 +47,6 @@ class FullConnection(ConnectionLayer):
                 self.weights[r, c] = w - epsilon
                 yield
                 self.weights[r,c] = w
-
-
-def add_bias(X):
-    X = np.atleast_2d(X)
-    return np.hstack((X, np.ones((X.shape[0], 1))))
 
 class FullConnectionWithBias(FullConnection):
     def __init__(self, input_size, output_size):
