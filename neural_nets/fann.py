@@ -41,7 +41,7 @@ class FANN(object):
         """
         activations = [X]
         for layer in self.layers:
-            activations.append(sigmoid(layer.forward_pass(theta[self.theta_slices[layer]], activations[-1])))
+            activations.append(layer.forward_pass(theta[self.theta_slices[layer]], activations[-1]))
         return activations
 
     def calculate_error(self, theta, X, T):
