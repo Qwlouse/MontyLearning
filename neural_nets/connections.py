@@ -33,9 +33,13 @@ class FullConnection(object):
         W = self.unpackTheta(theta)
         return Y.dot(W.T)
 
-    def calculate_gradient(self, X, delta):
+    def calculate_gradient(self, theta, X, Y, out_error):
+        delta = out_error * self.f.reverse(Y)
+        W = self.unpackTheta(theta)
         X = np.atleast_2d(X)
-        return -X.T.dot(delta)
+        grad = -X.T.dot(delta)
+        in_error = delta.dot(W.T)
+        return in_error, grad
 
 class FullConnectionWithBias(FullConnection):
     """
@@ -56,5 +60,6 @@ class FullConnectionWithBias(FullConnection):
     def backward_pass(self, theta, Y):
         return FullConnection.backward_pass(self, theta, Y)[:,:-1]
 
-    def calculate_gradient(self, X, delta):
-        return FullConnection.calculate_gradient(self, add_bias(X), delta)
+    def calculate_gradient(self, theta, X, Y, out_error):
+        in_error, grad = FullConnection.calculate_gradient(self, theta, add_bias(X), Y, out_error)
+        return in_error[:,:-1], grad
