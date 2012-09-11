@@ -58,7 +58,7 @@ class FANN(object):
             th = theta[self.theta_slices[layer]]
             input = activations[i]
             output = activations[i+1]
-            delta, grad = layer.calculate_gradient(th, input, output, delta)
+            delta, grad = layer.backprop(th, input, output, delta)
             grad_theta = np.hstack((grad.reshape(-1), grad_theta))
 
         return grad_theta
