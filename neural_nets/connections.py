@@ -13,7 +13,7 @@ class FullConnection(object):
         self.input_dim = input_dim
         self.output_dim = output_dim
 
-    def __len__(self):
+    def get_param_dim(self):
         """
         Return the dimension of the parameter-space.
         """
@@ -43,7 +43,7 @@ class FullConnectionWithBias(object):
         self.input_dim = input_dim
         self.output_dim = output_dim
 
-    def __len__(self):
+    def get_param_dim(self):
         """
         Return the dimension of the parameter-space.
         """

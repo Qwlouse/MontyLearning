@@ -14,7 +14,7 @@ def test_FullConnection_dimensions():
     fc = FullConnection(5, 7)
     assert_equal(fc.input_dim, 5)
     assert_equal(fc.output_dim, 7)
-    assert_equal(len(fc), 5*7)
+    assert_equal(fc.get_param_dim(), 5*7)
 
 def test_FullConnection_forward_pass_single_samples():
     fc = FullConnection(4, 1)
@@ -30,7 +30,7 @@ def test_FullConnectionWithBias_dimensions():
     fc = FullConnectionWithBias(5, 7)
     assert_equal(fc.input_dim, 5)
     assert_equal(fc.output_dim, 7)
-    assert_equal(len(fc), 6*7)
+    assert_equal(fc.get_param_dim(), 6*7)
 
 def test_FullConnectionWithBias_forward_pass_single_samples():
     fc = FullConnectionWithBias(3, 1)

@@ -14,17 +14,17 @@ class FANN(object):
         self.output_size = layers[-1].output_dim
         self.layers = layers
 
-    def __len__(self):
+    def get_param_dim(self):
         dim = 0
         for l in self.layers:
-            dim += len(l)
+            dim += l.get_param_dim()
         return dim
 
     def slice_theta(self, theta):
         slices = []
         theta_offset = 0
         for layer in self.layers:
-            param_dim = len(layer)
+            param_dim = layer.get_param_dim()
             slices.append(theta[theta_offset:theta_offset + param_dim])
             theta_offset += param_dim
         return slices
