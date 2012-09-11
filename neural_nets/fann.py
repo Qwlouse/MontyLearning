@@ -53,13 +53,14 @@ class FANN(object):
         sliced_theta, activations = self.full_forward_pass(theta, X)
         Y = activations[-1]
         delta = (T - Y) * Y * (1 - Y) #sigmoid
-        grad_theta = self.layers[-1].calculate_gradient(activations[-2], delta).reshape(-1)
-        for i in range(len(self.layers) - 1, 0, -1):
+        grad_theta = np.array([])
+        for i in range(len(self.layers) - 1, -1, -1):
             a = activations[i]
             layer = self.layers[i]
-            delta = layer.backward_pass(sliced_theta[i], delta) * a * (1 - a) #sigmoid
-            grad = self.layers[i-1].calculate_gradient(activations[i-1], delta)
+            grad = self.layers[i].calculate_gradient(a, delta)
             grad_theta = np.hstack((grad.reshape(-1), grad_theta))
+            if i == 0 : break # skip the last delta
+            delta = layer.backward_pass(sliced_theta[i], delta) * a * (1 - a) #sigmoid
         return grad_theta
 
 
