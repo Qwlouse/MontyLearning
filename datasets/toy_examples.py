@@ -26,5 +26,5 @@ def generate_majority_vote(n = 200, m = 9):
     vote.DESCR = "Toy example to train a network how to do a majority vote."\
                  "Target is 1 iff there are more 1s than 0s in the input."
     vote.data = np.random.randint(0, 2, (n, m))
-    vote.target = (np.sum(vote.data, 1) > m // 2)
+    vote.target = (np.sum(vote.data, 1) > m // 2).reshape(-1,1)
     return vote
