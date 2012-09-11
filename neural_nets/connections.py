@@ -5,61 +5,25 @@ import numpy as np
 from neural_nets.helpers import add_bias
 
 
-class ConnectionLayer(object):
+class FullConnection(object):
     """
-    Base class for all connections.
+    Simple linear feed-forward full connection without bias.
     """
-    def input_size(self):
-        raise NotImplementedError()
+    def __init__(self, input_dim, output_dim):
+        self.input_dim = input_dim
+        self.output_dim = output_dim
 
-    def output_size(self):
-        raise NotImplementedError()
+    def unpackTheta(self, theta):
+        return theta.reshape(self.input_dim, self.output_dim)
 
-    def is_recurrent(self):
-        return False
+    def forward_pass(self, theta, X):
+        W = self.unpackTheta(theta)
+        X = np.atleast_2d(X)
+        return X.dot(W)
 
-
-class FullConnection(ConnectionLayer):
-    def __init__(self, input_size, output_size):
-        self.weights = np.random.randn(input_size, output_size)
-
-    def input_size(self):
-        return self.weights.shape[0]
-
-    def output_size(self):
-        return self.weights.shape[1]
-
-    def pass_forward(self, X):
-        return X.dot(self.weights)
-
-    def pass_backward(self, Y):
-        return Y.dot(self.weights.T)
+    def backward_pass(self, theta, Y):
+        W = self.unpackTheta(theta)
+        return Y.dot(W.T)
 
     def calculate_gradient(self, X, delta):
         return -np.outer(delta, X)
-
-    def gradient_estimation_process(self, epsilon):
-        for r in range(self.weights.shape[0]):
-            for c in range(self.weights.shape[1]):
-                w = self.weights[r, c]
-                self.weights[r, c] = w + epsilon
-                yield r, c
-                self.weights[r, c] = w - epsilon
-                yield
-                self.weights[r,c] = w
-
-class FullConnectionWithBias(FullConnection):
-    def __init__(self, input_size, output_size):
-        super(FullConnectionWithBias, self).__init__(input_size + 1, output_size)
-
-    def input_size(self):
-        return FullConnection.input_size(self) - 1
-
-    def pass_forward(self, X):
-        return FullConnection.pass_forward(self, add_bias(X))
-
-    def pass_backward(self, Y):
-        return FullConnection.pass_backward(self, Y)[:-1]
-
-    def calculate_gradient(self, X, delta):
-        return FullConnection.calculate_gradient(self, add_bias(X), delta)
