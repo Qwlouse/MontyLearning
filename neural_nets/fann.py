@@ -4,7 +4,7 @@ from __future__ import division, unicode_literals, print_function
 import numpy as np
 from functions import sigmoid
 from helpers import add_bias
-from neural_nets.connections import FullConnection
+from neural_nets.connections import FullConnection, FullConnectionWithBias
 
 
 class FANN(object):
@@ -15,7 +15,10 @@ class FANN(object):
     def __init__(self, input_size, output_size, include_bias=False):
         self.input_size = input_size
         self.output_size = output_size
-        self.layer = FullConnection(input_size, output_size)
+        if include_bias:
+            self.layer = FullConnectionWithBias(input_size, output_size)
+        else:
+            self.layer = FullConnection(input_size, output_size)
         self.include_bias = include_bias
 
     def forward_pass(self, theta, X):
