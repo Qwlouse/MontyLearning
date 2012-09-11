@@ -13,6 +13,12 @@ class FullConnection(object):
         self.input_dim = input_dim
         self.output_dim = output_dim
 
+    def __len__(self):
+        """
+        Return the dimension of the parameter-space.
+        """
+        return self.input_dim * self.output_dim
+
     def unpackTheta(self, theta):
         return theta.reshape(self.input_dim, self.output_dim)
 
@@ -36,6 +42,12 @@ class FullConnectionWithBias(object):
     def __init__(self, input_dim, output_dim):
         self.input_dim = input_dim
         self.output_dim = output_dim
+
+    def __len__(self):
+        """
+        Return the dimension of the parameter-space.
+        """
+        return (self.input_dim + 1) * self.output_dim
 
     def unpackTheta(self, theta):
         return theta.reshape(self.input_dim + 1, self.output_dim)
