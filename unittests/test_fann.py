@@ -113,3 +113,31 @@ def test_FANN_multilayer_gradient_single_sample():
         grad_c = nn.calculate_gradient(theta, x, t)
         grad_e = approx_fprime(theta, nn.calculate_error, 1e-8, x, t)
         assert_almost_equal(grad_c, grad_e)
+
+def test_FANN_with_bias_multilayer_gradient_single_sample():
+    fc0 = FullConnectionWithBias(3, 2)
+    fc1 = FullConnectionWithBias(2, 1)
+    nn = FANN([fc0, fc1])
+    theta = np.random.randn(nn.get_param_dim())
+    for x, t in zip(X_nb, T) :
+        grad_c = nn.calculate_gradient(theta, x, t)
+        grad_e = approx_fprime(theta, nn.calculate_error, 1e-8, x, t)
+        assert_almost_equal(grad_c, grad_e)
+
+def test_FANN_multilayer_gradient_multisample():
+    fc0 = FullConnectionWithBias(4, 2)
+    fc1 = FullConnectionWithBias(2, 1)
+    nn = FANN([fc0, fc1])
+    theta = np.random.randn(nn.get_param_dim())
+    grad_c = nn.calculate_gradient(theta, X, T)
+    grad_e = approx_fprime(theta, nn.calculate_error, 1e-8, X, T)
+    assert_almost_equal(grad_c, grad_e)
+
+def test_FANN_multilayer_with_bias_gradient_multisample():
+    fc0 = FullConnectionWithBias(3, 2)
+    fc1 = FullConnectionWithBias(2, 1)
+    nn = FANN([fc0, fc1])
+    theta = np.random.randn(nn.get_param_dim())
+    grad_c = nn.calculate_gradient(theta, X_nb, T)
+    grad_e = approx_fprime(theta, nn.calculate_error, 1e-8, X_nb, T)
+    assert_almost_equal(grad_c, grad_e)
