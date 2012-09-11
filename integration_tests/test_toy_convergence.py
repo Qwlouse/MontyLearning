@@ -24,7 +24,7 @@ def test_FANN_converges_on_xor_problem():
     nn = FANN([fc0, fc1])
     xor = load_xor()
     theta = np.random.randn(nn.get_param_dim())
-    for i in range(1000):
+    for i in range(2000):
         g = nn.calculate_gradient(theta, xor.data, xor.target)
         theta -= g * 1
     error = nn.calculate_error(theta, xor.data, xor.target)
