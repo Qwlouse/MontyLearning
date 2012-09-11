@@ -12,14 +12,10 @@ class FANN(object):
     A Functional Artificial Neural Network.
       * 1 layer
     """
-    def __init__(self, input_size, output_size, include_bias=False):
-        self.input_size = input_size
-        self.output_size = output_size
-        if include_bias:
-            self.layer = FullConnectionWithBias(input_size, output_size)
-        else:
-            self.layer = FullConnection(input_size, output_size)
-        self.include_bias = include_bias
+    def __init__(self, layer):
+        self.input_size = layer.input_dim
+        self.output_size = layer.output_dim
+        self.layer = layer
 
     def forward_pass(self, theta, X):
         """
@@ -36,7 +32,5 @@ class FANN(object):
         Y = self.forward_pass(theta, X)
         deltas = (T - Y) * Y * (1 - Y)
         X = np.atleast_2d(X)
-        if self.include_bias:
-            X = add_bias(X)
-        grad = -X.T.dot(deltas)
+        grad = self.layer.calculate_gradient(X, deltas)
         return grad.reshape(-1), Y, deltas
