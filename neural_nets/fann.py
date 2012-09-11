@@ -3,34 +3,52 @@
 from __future__ import division, unicode_literals, print_function
 import numpy as np
 from functions import sigmoid
-from helpers import add_bias
-from neural_nets.connections import FullConnection, FullConnectionWithBias
 
 
 class FANN(object):
     """
     A Functional Artificial Neural Network.
-      * 1 layer
     """
-    def __init__(self, layer):
-        self.input_size = layer.input_dim
-        self.output_size = layer.output_dim
-        self.layer = layer
+    def __init__(self, layers):
+        self.input_size = layers[0].input_dim
+        self.output_size = layers[-1].output_dim
+        self.layers = layers
 
     def forward_pass(self, theta, X):
         """
         Using the parameters theta as the weights evaluate this feed-forward
-        neural network on the data X.
+        neural network on the data X returning only the outcome.
         """
-        return sigmoid(self.layer.forward_pass(theta, X))
+        activation = X
+        for layer in self.layers:
+            activation = sigmoid(layer.forward_pass(theta, activation))
+        return activation
+
+    def full_forward_pass(self, theta, X):
+        """
+        Using the parameters theta as the weights evaluate this feed-forward
+        neural network on the data X returning the full list of activations.
+        """
+        activations = [X]
+        for layer in self.layers:
+            activations.append(sigmoid(layer.forward_pass(theta, activations[-1])))
+        return activations
 
     def calculate_error(self, theta, X, T):
         Y = self.forward_pass(theta, X)
         return np.sum(0.5 * (T - Y)**2)
 
     def calculate_gradient(self, theta, X, T):
-        Y = self.forward_pass(theta, X)
-        deltas = (T - Y) * Y * (1 - Y)
-        X = np.atleast_2d(X)
-        grad = self.layer.calculate_gradient(X, deltas)
-        return grad.reshape(-1), Y, deltas
+        activations = self.full_forward_pass(theta, X)
+        Y = activations[-1]
+        delta = (T - Y) * Y * (1 - Y) #sigmoid
+        grad_theta = self.layers[-1].calculate_gradient(activations[-2], delta).reshape(-1)
+        for i in range(len(self.layers) - 1, 0, -1):
+            a = activations[i]
+            layer = self.layers[i]
+            delta = layer.pass_down(delta) * a * (1 - a) #sigmoid
+            grad = layer.calculate_gradient(a, delta)
+            grad_theta = np.hstack((grad_theta, grad.reshape(-1)))
+        return grad_theta
+
+

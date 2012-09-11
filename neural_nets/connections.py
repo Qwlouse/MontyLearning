@@ -26,6 +26,7 @@ class FullConnection(object):
         return Y.dot(W.T)
 
     def calculate_gradient(self, X, delta):
+        X = np.atleast_2d(X)
         return -X.T.dot(delta)
 
 class FullConnectionWithBias(object):
