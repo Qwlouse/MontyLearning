@@ -30,10 +30,6 @@ class FANN(object):
         return slices
 
     def forward_pass(self, theta, X):
-        """
-        Using the parameters theta as the weights evaluate this feed-forward
-        neural network on the data X returning only the outcome.
-        """
         # NOTE: This method might be optimized
         return self.full_forward_pass(theta, X)[-1]
 

@@ -19,16 +19,16 @@ def test_FANN_converges_on_and_problem():
     assert_less(error,  0.2)
 
 def test_FANN_converges_on_xor_problem():
-    fc0 = FullConnection(2, 2)
-    fc1 = FullConnection(2, 1)
+    fc0 = FullConnectionWithBias(2, 2)
+    fc1 = FullConnectionWithBias(2, 1)
     nn = FANN([fc0, fc1])
     xor = load_xor()
-    theta = np.random.randn(len(nn))
+    theta = np.random.randn(nn.get_param_dim())
     for i in range(1000):
         g = nn.calculate_gradient(theta, xor.data, xor.target)
         theta -= g * 1
     error = nn.calculate_error(theta, xor.data, xor.target)
-    assert_less(error,  0.2)
+    assert_less(error,  0.3)
 
 def test_FANN_converges_on_vote_problem():
     fc = FullConnectionWithBias(9, 1)
