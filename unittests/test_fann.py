@@ -104,3 +104,12 @@ def test_FANN_with_bias_gradient_multisample():
     grad_e = approx_fprime(theta, nn.calculate_error, 1e-8, X_nb, T)
     assert_almost_equal(grad_c, grad_e)
 
+def test_FANN_multilayer_gradient_single_sample():
+    fc0 = FullConnection(4, 2)
+    fc1 = FullConnection(2, 1)
+    nn = FANN([fc0, fc1])
+    theta = np.random.randn(nn.get_param_dim())
+    for x, t in zip(X, T) :
+        grad_c = nn.calculate_gradient(theta, x, t)
+        grad_e = approx_fprime(theta, nn.calculate_error, 1e-8, x, t)
+        assert_almost_equal(grad_c, grad_e)

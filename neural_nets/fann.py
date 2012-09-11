@@ -61,7 +61,7 @@ class FANN(object):
             a = activations[i]
             layer = self.layers[i]
             delta = layer.backward_pass(theta_slices[i], delta) * a * (1 - a) #sigmoid
-            grad = layer.calculate_gradient(a, delta)
+            grad = self.layers[i-1].calculate_gradient(activations[i-1], delta)
             grad_theta = np.hstack((grad.reshape(-1), grad_theta))
         return grad_theta
 
