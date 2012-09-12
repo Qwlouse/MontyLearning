@@ -2,18 +2,17 @@
 # coding: utf-8
 from __future__ import division, unicode_literals, print_function
 import numpy as np
-from neural_nets.functions import identity
+from neural_nets.functions import identity, sigmoid
 from neural_nets.helpers import add_bias
 
 
 class FullConnection(object):
     """
-    Simple feed-forward full connection without bias.
+    Feed-forward full connection without bias.
     """
-    def __init__(self, input_dim, output_dim, function=identity):
+    def __init__(self, input_dim, output_dim):
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.f = function
 
     def get_param_dim(self):
         """
@@ -27,19 +26,18 @@ class FullConnection(object):
     def forward_pass(self, theta, X):
         W = self.unpackTheta(theta)
         X = np.atleast_2d(X)
-        return self.f(X.dot(W))
+        return X.dot(W)
 
     def backprop(self, theta, X, Y, out_error):
-        delta = out_error * self.f.reverse(Y)
         W = self.unpackTheta(theta)
         X = np.atleast_2d(X)
-        grad = -X.T.dot(delta)
-        in_error = delta.dot(W.T)
+        grad = -X.T.dot(out_error)
+        in_error = out_error.dot(W.T)
         return in_error, grad
 
 class FullConnectionWithBias(FullConnection):
     """
-    Linear feed-forward full connection WITH bias.
+    Feed-forward full connection WITH bias.
     """
     def get_param_dim(self):
         """
@@ -56,3 +54,17 @@ class FullConnectionWithBias(FullConnection):
     def backprop(self, theta, X, Y, out_error):
         in_error, grad = FullConnection.backprop(self, theta, add_bias(X), Y, out_error)
         return in_error[:,:-1], grad
+
+class SigmoidLayer(object):
+    def __init__(self, dim):
+        self.input_dim = dim
+        self.output_dim = dim
+
+    def get_param_dim(self):
+        return 0
+
+    def forward_pass(self, theta, X):
+        return sigmoid(X)
+
+    def backprop(self, theta, X, Y, out_error):
+        return out_error * Y * (1-Y), np.array([])
