@@ -8,7 +8,7 @@ from neural_nets.helpers import add_bias
 
 class FullConnection(object):
     """
-    Simple linear feed-forward full connection without bias.
+    Simple feed-forward full connection without bias.
     """
     def __init__(self, input_dim, output_dim, function=identity):
         self.input_dim = input_dim
@@ -28,10 +28,6 @@ class FullConnection(object):
         W = self.unpackTheta(theta)
         X = np.atleast_2d(X)
         return self.f(X.dot(W))
-
-    def backward_pass(self, theta, Y):
-        W = self.unpackTheta(theta)
-        return Y.dot(W.T)
 
     def backprop(self, theta, X, Y, out_error):
         delta = out_error * self.f.reverse(Y)
@@ -56,9 +52,6 @@ class FullConnectionWithBias(FullConnection):
 
     def forward_pass(self, theta, X):
         return FullConnection.forward_pass(self, theta, add_bias(X))
-
-    def backward_pass(self, theta, Y):
-        return FullConnection.backward_pass(self, theta, Y)[:,:-1]
 
     def backprop(self, theta, X, Y, out_error):
         in_error, grad = FullConnection.backprop(self, theta, add_bias(X), Y, out_error)
