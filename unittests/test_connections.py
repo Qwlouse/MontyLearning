@@ -83,3 +83,13 @@ def test_ForwardAndRecurrentConnections_feed_forward_two_samples():
     X = np.array([[1],[1]])
     T = np.array([[1],[2]])
     assert_equal(frc.forward_pass(theta, X), T)
+
+def test_ForwardAndRecurrentConnections_feed_forward_two_samples_using_carry():
+    frc = ForwardAndRecurrentConnection(1, 1)
+    theta = np.ones(frc.get_param_dim())
+    X = np.array([[1],[1]])
+    T = np.array([[1],[2]])
+    assert_equal(frc.forward_pass(theta, X[0]), T[0:1])
+    assert_equal(frc.forward_pass(theta, X[1], X[0]), T[1:2])
+
+
