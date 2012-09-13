@@ -71,3 +71,15 @@ def test_ForwardAndRecurrentConnections_param_dim():
     frc = ForwardAndRecurrentConnection(3, 7)
     assert_equal(frc.get_param_dim(), 3*7 + 7*7)
 
+def test_ForwardAndRecurrentConnections_feed_forward_single_sample():
+    # single sample, the recurrent connection should not jump in
+    frc = ForwardAndRecurrentConnection(1, 1)
+    theta = np.ones(frc.get_param_dim())
+    assert_equal(frc.forward_pass(theta, 1), 1)
+
+def test_ForwardAndRecurrentConnections_feed_forward_two_samples():
+    frc = ForwardAndRecurrentConnection(1, 1)
+    theta = np.ones(frc.get_param_dim())
+    X = np.array([[1],[1]])
+    T = np.array([[1],[2]])
+    assert_equal(frc.forward_pass(theta, X), T)
