@@ -129,11 +129,15 @@ class ForwardAndRecurrentConnection(object):
             Y[i] = carry
         return Y
 
-    def backprop(self, theta, X, Y, out_error):
-        W = self.unpackTheta(theta)
-        X = np.atleast_2d(X)
-        grad = -X.T.dot(out_error)
-        in_error = out_error.dot(W.T)
+    def backprop(self, theta, X, Y, out_error, carry=None):
+        W_in, W_r = self.unpackTheta(theta)
+        X, Y, out_error = map(np.atleast_2d, [X, Y, out_error])
+        if carry is None:
+            carry = np.zeros_like(Y[0:1])
+        grad_in = -X.T.dot(out_error)
+        grad_r = -carry.T.dot(out_error)
+        grad = np.hstack((grad_in, grad_r)).reshape(-1)
+        in_error = out_error.dot(W_in.T)
         return in_error, grad
 
 
