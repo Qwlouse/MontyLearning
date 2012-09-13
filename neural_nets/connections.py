@@ -113,17 +113,19 @@ class ForwardAndRecurrentConnection(object):
         return self.input_dim * self.output_dim + self.output_dim ** 2
 
     def unpackTheta(self, theta):
-        return theta.reshape(self.input_dim + self.output_dim, self.output_dim)
+        W_in_dim = self.input_dim * self.output_dim
+        W_in = theta[:W_in_dim].reshape(self.input_dim, self.output_dim)
+        W_r  = theta[W_in_dim:].reshape(self.output_dim, self.output_dim)
+        return W_in, W_r
 
     def forward_pass(self, theta, X, carry=None):
-        W = self.unpackTheta(theta)
+        W_in, W_r = self.unpackTheta(theta)
         X = np.atleast_2d(X)
         if carry is None:
             carry = np.zeros_like(X[0])
         Y = np.zeros_like(X)
         for i, x in enumerate(X):
-            xc = np.hstack((x, carry))
-            carry = xc.dot(W)
+            carry = x.dot(W_in) + carry.dot(W_r)
             Y[i] = carry
         return Y
 
