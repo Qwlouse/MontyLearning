@@ -55,6 +55,50 @@ class FullConnectionWithBias(FullConnection):
         in_error, grad = FullConnection.backprop(self, theta, add_bias(X), Y, out_error)
         return in_error[:,:-1], grad
 
+class RecurrentConnection(object):
+    """
+    Recurrent full connection without bias.
+    """
+    def __init__(self, dim):
+        self.input_dim = dim
+        self.output_dim = dim
+
+    def get_param_dim(self):
+        """
+        Return the dimension of the parameter-space.
+        """
+        return self.input_dim * self.output_dim
+
+    def unpackTheta(self, theta):
+        return theta.reshape(self.input_dim, self.output_dim)
+
+    def forward_pass(self, theta, X, carry = None):
+        W = self.unpackTheta(theta)
+        X = np.atleast_2d(X)
+        if carry is None:
+            carry = np.zeros_like(X[0])
+        Y = np.zeros_like(X)
+        for i, x in enumerate(X):
+            Y[i] = (x + carry)
+            carry = Y[i].dot(W)
+        return Y
+
+    def backprop(self, theta, X, Y, out_error):
+        W = self.unpackTheta(theta)
+        X = np.atleast_2d(X)
+        carry = np.zeros_like(out_error[0])
+        grad = np.zeros_like(W)
+        in_error = np.zeros_like(out_error)
+        for i in range(len(out_error)-1, -1, -1):
+            delta = out_error[i] + carry.dot(W.T)
+            x = X[i:i+1] # slice indexing to preserve 2d
+            grad -= x.T.dot(delta)
+            in_error[i] = delta
+            carry =  delta
+        return in_error, grad
+
+
+
 class SigmoidLayer(object):
     def __init__(self, dim):
         self.input_dim = dim

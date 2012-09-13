@@ -4,7 +4,7 @@ from __future__ import division, unicode_literals, print_function
 import numpy as np
 from scipy.optimize import approx_fprime
 from helpers import *
-from neural_nets.connections import FullConnection, FullConnectionWithBias, SigmoidLayer
+from neural_nets.connections import FullConnection, FullConnectionWithBias, SigmoidLayer, RecurrentConnection
 
 from neural_nets.fann import FANN
 from neural_nets.functions import sigmoid
@@ -160,3 +160,14 @@ def test_FANN_multilayer_with_bias_gradient_multisample():
     grad_c = nn.calculate_gradient(theta, X_nb, T)
     grad_e = approx_fprime(theta, nn.calculate_error, 1e-8, X_nb, T)
     assert_almost_equal(grad_c, grad_e)
+
+def test_FANN_recurrent_gradient_single_sample():
+    #fc = FullConnection(1, 1)
+    rc = RecurrentConnection(1)
+    nn = FANN([rc])
+    theta = np.array([2])
+    for x, t in [[0, 1], [1, 1], [0, 0]] :
+        x = np.array([[x]])
+        grad_c = nn.calculate_gradient(theta, x, t)
+        grad_e = approx_fprime(theta, nn.calculate_error, 1e-8, x, t)
+        assert_almost_equal(grad_c, grad_e)
