@@ -98,3 +98,10 @@ def test_ForwardAndRecurrentConnections_backprop_single_sample():
     error, grad = frc.backprop(theta, 1, 1, 1)
     assert_equal(grad, [-1, 0])
     assert_equal(error, 1)
+
+def test_ForwardAndRecurrentConnections_backprop_single_samples_with_carry():
+    frc = ForwardAndRecurrentConnection(1, 1)
+    theta = np.ones(frc.get_param_dim())
+    error, grad = frc.backprop(theta, 1, 1, 1, 1)
+    assert_equal(grad, [-1, -1])
+    assert_equal(error, 1)

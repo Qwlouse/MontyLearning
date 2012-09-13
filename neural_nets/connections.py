@@ -134,6 +134,8 @@ class ForwardAndRecurrentConnection(object):
         X, Y, out_error = map(np.atleast_2d, [X, Y, out_error])
         if carry is None:
             carry = np.zeros_like(Y[0:1])
+        else:
+            carry = np.atleast_2d(carry)
         grad_in = -X.T.dot(out_error)
         grad_r = -carry.T.dot(out_error)
         grad = np.hstack((grad_in, grad_r)).reshape(-1)
