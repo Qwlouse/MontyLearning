@@ -2,7 +2,7 @@
 # coding: utf-8
 from __future__ import division, unicode_literals, print_function
 import numpy as np
-from neural_nets.connections import FullConnection, FullConnectionWithBias, RecurrentConnection
+from neural_nets.connections import FullConnection, FullConnectionWithBias, RecurrentConnection, ForwardAndRecurrentConnection
 from helpers import *
 
 theta = np.array([[-1, 1, 0, 1]]).reshape(-1)
@@ -61,3 +61,13 @@ def test_RecurrentConnection_forward_pass_multi_sample():
     theta = np.eye(4).flatten()
     X_summed = np.array([[0, 0, 0, 1], [1, 0, 0, 2],[1, 1, 0, 3],[1, 1, 1, 4],[2, 2, 1, 5]])
     assert_equal(fc.forward_pass(theta, X), X_summed)
+
+def test_ForwardAndRecurrentConnections_dimensions():
+    frc = ForwardAndRecurrentConnection(3, 7)
+    assert_equal(frc.input_dim, 3)
+    assert_equal(frc.output_dim, 7)
+
+def test_ForwardAndRecurrentConnections_param_dim():
+    frc = ForwardAndRecurrentConnection(3, 7)
+    assert_equal(frc.get_param_dim(), 3*7 + 7*7)
+

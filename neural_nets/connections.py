@@ -98,6 +98,39 @@ class RecurrentConnection(object):
         return in_error, grad
 
 
+class ForwardAndRecurrentConnection(object):
+    """
+    Set of connections that connect two layers and also recurrently connects the output layer
+    """
+    def __init__(self, input_dim, output_dim):
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+
+    def get_param_dim(self):
+        """
+        Return the dimension of the parameter-space.
+        """
+        return self.input_dim * self.output_dim + self.output_dim ** 2
+
+    def unpackTheta(self, theta):
+        W_in_dim = self.input_dim * self.output_dim
+        W_in = theta[:W_in_dim].reshape(self.input_dim, self.output_dim)
+        W_r  = theta[W_in_dim:].reshape(self.output_dim, self.output_dim)
+        return W_in, W_r
+
+    def forward_pass(self, theta, X):
+        W = self.unpackTheta(theta)
+        X = np.atleast_2d(X)
+        return X.dot(W)
+
+    def backprop(self, theta, X, Y, out_error):
+        W = self.unpackTheta(theta)
+        X = np.atleast_2d(X)
+        grad = -X.T.dot(out_error)
+        in_error = out_error.dot(W.T)
+        return in_error, grad
+
+
 
 class SigmoidLayer(object):
     def __init__(self, dim):
