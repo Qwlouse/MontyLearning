@@ -136,6 +136,7 @@ class ForwardAndRecurrentConnection(object):
             carry = np.zeros_like(Y[0:1])
         else:
             carry = np.atleast_2d(carry)
+        carry = np.vstack((carry, Y[:-1]))
         grad_in = -X.T.dot(out_error)
         grad_r = -carry.T.dot(out_error)
         grad = np.hstack((grad_in, grad_r)).reshape(-1)
