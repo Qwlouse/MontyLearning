@@ -6,3 +6,9 @@
 
 # Gedit temporary files
 *~
+
+# Sumatra Files
+.smt
+
+# Data Files
+Data
