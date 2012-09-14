@@ -121,9 +121,9 @@ class ForwardAndRecurrentConnection(object):
     def forward_pass(self, theta, X, carry=None):
         W_in, W_r = self.unpackTheta(theta)
         X = np.atleast_2d(X)
+        Y = np.zeros((X.shape[0], self.output_dim))
         if carry is None:
-            carry = np.zeros_like(X[0])
-        Y = np.zeros_like(X)
+            carry = np.zeros((1, self.output_dim))
         for i, x in enumerate(X):
             carry = x.dot(W_in) + carry.dot(W_r)
             Y[i] = carry
@@ -138,19 +138,19 @@ class ForwardAndRecurrentConnection(object):
             carry = np.atleast_2d(carry)
         in_error = np.zeros_like(X)
         grad = np.zeros_like(theta)
-
+        delta = carry
         for i in range(len(in_error)-1, 0, -1):
-            grad_r = np.outer(Y[i], carry)
+            grad_r = np.outer(Y[i], delta)
             delta = out_error[i] + carry
+            grad_in = np.outer(X[i], delta)
+            grad -= np.vstack((grad_in, grad_r)).reshape(-1)
             in_error[i] = delta.dot(W_in.T)
             carry = delta.dot(W_r.T)
-            grad_in = np.outer(X[i], delta)
-            grad -= np.hstack((grad_in, grad_r)).reshape(-1)
+        grad_r = np.outer(Y[0], delta)
         delta = out_error[0] + carry
-        in_error[0] = delta.dot(W_in.T)
         grad_in = np.outer(X[0], delta)
-        grad_r = np.outer(Y[0], carry)
-        grad -= np.hstack((grad_in, grad_r)).reshape(-1)
+        grad -= np.vstack((grad_in, grad_r)).reshape(-1)
+        in_error[0] = delta.dot(W_in.T)
         return in_error, grad
 
 
