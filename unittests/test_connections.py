@@ -4,6 +4,8 @@ from __future__ import division, unicode_literals, print_function
 import numpy as np
 from neural_nets.connections import FullConnection, FullConnectionWithBias, RecurrentConnection, ForwardAndRecurrentConnection
 from helpers import *
+from neural_nets.functions import error_function
+from scipy.optimize import approx_fprime
 
 theta = np.array([[-1, 1, 0, 1]]).reshape(-1)
 X = np.array([[0, 0, 0, 1], [1, 0, 0, 1],[0, 1, 0, 1],[0, 0, 1, 1],[1, 1, 0, 1]])
@@ -103,14 +105,24 @@ def test_ForwardAndRecurrentConnections_backprop_single_samples_with_carry():
     frc = ForwardAndRecurrentConnection(1, 1)
     theta = np.ones(frc.get_param_dim())
     error, grad = frc.backprop(theta, 1, 1, 1, 1)
-    assert_equal(grad, [-1, -1])
-    assert_equal(error, 1)
+    assert_equal(grad, [-2, -1])
+    assert_equal(error, 2)
 
 def test_ForwardAndRecurrentConnections_backprop_two_samples():
     frc = ForwardAndRecurrentConnection(1, 1)
     theta = np.ones(frc.get_param_dim())
-    error, grad = frc.backprop(theta, [[1], [1]], [[1], [2]], [[1], [0]])
-    assert_equal(grad, [-1, 0])
-    assert_equal(error, [[1], [0]])
+    error, grad = frc.backprop(theta, [[1], [1]], [[1], [2]], [[-1], [-2]])
+    assert_equal(grad, [5, 2])
+    assert_equal(error, [[-3], [-2]])
 
+def test_ForwardAndRecurrentConnections_backprop_gradient_check():
+    frc = ForwardAndRecurrentConnection(1, 1)
+    theta = np.ones(frc.get_param_dim())
+    X = [[1.], [1.]]
+    Y = [[1.], [2.]]
+    T = np.array([[0.], [0.]])
+    out_error = [[-1.], [-2.]]
+    error, grad = frc.backprop(theta, X, Y, out_error)
+    f = lambda t : error_function(T - frc.forward_pass(t, X))
+    assert_almost_equal(approx_fprime(theta, f, 1e-8), grad)
 

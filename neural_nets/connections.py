@@ -136,11 +136,21 @@ class ForwardAndRecurrentConnection(object):
             carry = np.zeros_like(Y[0:1])
         else:
             carry = np.atleast_2d(carry)
-        carry = np.vstack((carry, Y[:-1]))
-        grad_in = -X.T.dot(out_error)
-        grad_r = -carry.T.dot(out_error)
-        grad = np.hstack((grad_in, grad_r)).reshape(-1)
-        in_error = out_error.dot(W_in.T)
+        in_error = np.zeros_like(X)
+        grad = np.zeros_like(theta)
+
+        for i in range(len(in_error)-1, 0, -1):
+            grad_r = np.outer(Y[i], carry)
+            delta = out_error[i] + carry
+            in_error[i] = delta.dot(W_in.T)
+            carry = delta.dot(W_r.T)
+            grad_in = np.outer(X[i], delta)
+            grad -= np.hstack((grad_in, grad_r)).reshape(-1)
+        delta = out_error[0] + carry
+        in_error[0] = delta.dot(W_in.T)
+        grad_in = np.outer(X[0], delta)
+        grad_r = np.outer(Y[0], carry)
+        grad -= np.hstack((grad_in, grad_r)).reshape(-1)
         return in_error, grad
 
 
