@@ -19,4 +19,7 @@ def sigmoid_dx(x):
 def sigmoid_reverse(x):
     return x * (1 - x)
 
+def error_function(x):
+    return 0.5*np.sum(x**2)
+
 sigmoid.reverse = sigmoid_reverse
