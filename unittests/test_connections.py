@@ -2,7 +2,7 @@
 # coding: utf-8
 from __future__ import division, unicode_literals, print_function
 import numpy as np
-from neural_nets.connections import FullConnection, FullConnectionWithBias, RecurrentConnection, ForwardAndRecurrentConnection
+from neural_nets.connections import FullConnection, FullConnectionWithBias, RecurrentConnection, ForwardAndRecurrentConnection, ForwardAndRecurrentSigmoidConnection
 from helpers import *
 from neural_nets.functions import error_function
 from scipy.optimize import approx_fprime
@@ -138,3 +138,14 @@ def test_ForwardAndRecurrentConnections_backprop_random_example_gradient_check()
     grad_e = approx_fprime(theta, f, 1e-8)
     assert_allclose(grad_c, grad_e, rtol=1e-3, atol=1e-5)
 
+def test_ForwardAndRecurrentSigmoidConnections_backprop_random_example_gradient_check():
+    frc = ForwardAndRecurrentSigmoidConnection(4, 3)
+    theta = np.random.randn(frc.get_param_dim())
+    X = np.random.randn(10, 4)
+    Y = frc.forward_pass(theta, X)
+    T = np.zeros((10, 3))
+    out_error = (T - Y)
+    error, grad_c = frc.backprop(theta, X, Y, out_error)
+    f = lambda t : error_function(T - frc.forward_pass(t, X))
+    grad_e = approx_fprime(theta, f, 1e-8)
+    assert_allclose(grad_c, grad_e, rtol=1e-3, atol=1e-5)
