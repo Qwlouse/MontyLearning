@@ -4,7 +4,7 @@ from __future__ import division, unicode_literals, print_function
 import numpy as np
 from scipy.optimize import approx_fprime
 from helpers import *
-from neural_nets.connections import FullConnection, FullConnectionWithBias, SigmoidLayer, RecurrentConnection, ForwardAndRecurrentConnection
+from neural_nets.connections import FullConnection, FullConnectionWithBias, SigmoidLayer, RecurrentConnection, ForwardAndRecurrentConnection, ForwardAndRecurrentSigmoidConnection
 
 from neural_nets.fann import FANN
 from neural_nets.functions import sigmoid
@@ -182,6 +182,15 @@ def test_FANN_recurrent_gradient_multisample():
 def test_FANN_recurrent_gradient_multilayer_multisample():
     rc0 = ForwardAndRecurrentConnection(4,3)
     rc1 = ForwardAndRecurrentConnection(3,1)
+    nn = FANN([rc0, rc1])
+    theta = 2 * np.ones((nn.get_param_dim()))
+    grad_c = nn.calculate_gradient(theta, X, T)
+    grad_e = approx_fprime(theta, nn.calculate_error, 1e-8, X, T)
+    assert_allclose(grad_c, grad_e, rtol=1e-3, atol=1e-5)
+
+def test_FANN_recurrent_sigmoid_gradient_multilayer_multisample():
+    rc0 = ForwardAndRecurrentSigmoidConnection(4,3)
+    rc1 = ForwardAndRecurrentSigmoidConnection(3,1)
     nn = FANN([rc0, rc1])
     theta = 2 * np.ones((nn.get_param_dim()))
     grad_c = nn.calculate_gradient(theta, X, T)
