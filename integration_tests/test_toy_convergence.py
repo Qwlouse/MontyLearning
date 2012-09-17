@@ -2,10 +2,10 @@
 # coding: utf-8
 from __future__ import division, unicode_literals, print_function
 import numpy as np
-from datasets import load_and, generate_majority_vote, load_xor
-from neural_nets.connections import FullConnectionWithBias, FullConnection, SigmoidLayer
+from datasets import load_and, generate_majority_vote, load_xor, generate_remember_pattern_over_time
+from datasets.tools import seqEnum
+from neural_nets.connections import FullConnectionWithBias, FullConnection, SigmoidLayer, ForwardAndRecurrentSigmoidConnection
 from neural_nets.fann import FANN
-from neural_nets.functions import sigmoid
 from unittests.helpers import assert_less
 
 def test_FANN_converges_on_and_problem():
@@ -45,3 +45,19 @@ def test_FANN_converges_on_vote_problem():
         theta -= g * 1
     error = nn.calculate_error(theta, vote.data, vote.target)
     assert_less(error,  0.2)
+
+def test_RANN_converges_on_ropot_problem():
+    frc = ForwardAndRecurrentSigmoidConnection(5, 5)
+    nn = FANN([frc])
+    rpot = generate_remember_pattern_over_time()
+    theta = np.random.randn(nn.get_param_dim())
+    for i in range(100):
+        grad = np.zeros_like(theta)
+        for X, T in seqEnum(rpot):
+            grad += nn.calculate_gradient(theta, X, T)
+        theta -= grad * 1
+
+    error = 0
+    for X, T in seqEnum(rpot):
+        error += nn.calculate_error(theta, X, T)
+    assert_less(error, 10.)
