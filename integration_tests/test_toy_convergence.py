@@ -57,7 +57,5 @@ def test_RANN_converges_on_ropot_problem():
             grad += nn.calculate_gradient(theta, X, T)
         theta -= grad * 1
 
-    error = 0
-    for X, T in seqEnum(rpot):
-        error += nn.calculate_error(theta, X, T)
+    error = np.sum(nn.calculate_error(theta, X, T) for X, T in seqEnum(rpot))
     assert_less(error, 10.)
