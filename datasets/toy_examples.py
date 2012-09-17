@@ -28,3 +28,24 @@ def generate_majority_vote(n = 200, m = 9):
     vote.data = np.random.randint(0, 2, (n, m))
     vote.target = (np.sum(vote.data, 1) > m // 2).reshape(-1,1)
     return vote
+
+def generate_remember_pattern_over_time(n = 5, seqs = 10):
+    if n < 3 :
+        raise ValueError("n should not be smaller than 3")
+    rpot = Bunch()
+    rpot.DESCR = "Toy example to test recurrent neural networks. " \
+                 "Contains sequences that start with some binary pattern and " \
+                 "then all unit vectors and the pattern from the beginning again"
+    data = []
+    rpot.seqs = []
+    for i in range(seqs):
+        pattern = np.zeros((1, n))
+        while np.sum(pattern) < 2:
+            pattern = np.random.randint(0, 2, (1, n))
+        unitVecs = np.eye(n)
+        data.append(np.vstack((pattern, unitVecs, pattern)))
+        rpot.seqs.append(slice((n+2)*i, (n+2)*(i+1)))
+    rpot.data = np.vstack(data)
+    return rpot
+
+

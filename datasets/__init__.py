@@ -3,7 +3,8 @@
 """
 Datasets are presented in the scikits.learn format. That means a Bunch containing:
   * data   : ndarray with one sample per line and one feature per column
-  * target : ndarray with one output sample per line (for supervised tasks)
+  * target : ndarray with one output sample per line (for supervised tasks only)
+  * seqs   : list of slices that split the data into sequences (for sequential tasks only)
   * DESCR  : description of the dataset (optional)
 """
 
