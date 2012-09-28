@@ -10,14 +10,15 @@ def test_Experiment_constructor_works():
 
 def test_Experiment_provides_stage_decorator():
     ex1 = Experiment()
+
     @ex1.stage
-    def foo():
-        pass
+    def foo(): pass
 
     assert_true(hasattr(foo, '__call__'))
 
 def test_stage_decorator_retains_docstring():
     ex1 = Experiment()
+
     @ex1.stage
     def foo():
         """
@@ -30,25 +31,23 @@ def test_stage_decorator_retains_docstring():
 
 def test_stage_decorator_retains_function_name():
     ex1 = Experiment()
+
     @ex1.stage
-    def foo():
-        pass
+    def foo(): pass
 
     assert_equal(foo.func_name, "foo")
 
 def test_Experiment_keeps_track_of_stages():
     ex1 = Experiment()
-    @ex1.stage
-    def foo():
-        pass
 
     @ex1.stage
-    def bar():
-        pass
+    def foo(): pass
 
     @ex1.stage
-    def baz():
-        pass
+    def bar(): pass
+
+    @ex1.stage
+    def baz(): pass
 
     assert_equal(ex1.stages["foo"], foo)
     assert_equal(ex1.stages["bar"], bar)
@@ -57,17 +56,15 @@ def test_Experiment_keeps_track_of_stages():
 
 def test_Experiment_preserves_order_of_stages():
     ex1 = Experiment()
-    @ex1.stage
-    def foo():
-        pass
 
     @ex1.stage
-    def bar():
-        pass
+    def foo(): pass
 
     @ex1.stage
-    def baz():
-        pass
+    def bar(): pass
+
+    @ex1.stage
+    def baz(): pass
 
     assert_equal(ex1.stages.keys(), ["foo", "bar", "baz"])
 
@@ -96,6 +93,7 @@ def test_stage_applies_options():
     def foo(alpha, beta):
         return alpha, beta
 
+    #noinspection PyArgumentList
     assert_equal(foo(), (0.7, 1.2))
 
 def test_stage_overrides_default_with_options():
@@ -119,3 +117,33 @@ def test_stage_keeps_explicit_arguments():
         return alpha, beta
 
     assert_equal(foo(0, beta=0), (0, 0))
+
+@raises(TypeError)
+def test_stage_with_unexpected_kwarg_raises_TypeError():
+    ex1 = Experiment()
+
+    @ex1.stage
+    def foo(): pass
+
+    #noinspection PyArgumentList
+    foo(unexpected=1)
+
+@raises(TypeError)
+def test_stage_with_duplicate_arguments_raises_TypeError():
+    ex1 = Experiment()
+
+    @ex1.stage
+    def foo(a): pass
+
+    #noinspection PyArgumentList
+    foo(2, a=1)
+
+@raises(TypeError)
+def test_stage_with_missing_arguments_raises_TypeError():
+    ex1 = Experiment()
+    ex1.options["b"]=1
+    @ex1.stage
+    def foo(a, b, c, d=5): pass
+
+    #noinspection PyArgumentList
+    foo(1)
