@@ -23,3 +23,13 @@ def error_function(x):
     return 0.5*np.sum(x**2)
 
 sigmoid.reverse = sigmoid_reverse
+
+def estimate_gradient(f, theta, epsilon=1e-8):
+    grad = np.zeros_like(theta)
+    for i, t in enumerate(theta):
+        theta[i] = t + epsilon
+        e_plus = f(theta)
+        theta[i] = t - epsilon
+        e_minus = f(theta)
+        grad[i] = (e_plus - e_minus) / (2 * epsilon)
+    return grad

@@ -184,6 +184,7 @@ class ForwardAndRecurrentSigmoidConnection(object):
             Y[i] = carry
         return Y
 
+    # Note: we got some problems here FIX
     def backprop(self, theta, X, Y, out_error, carry=None):
         W_in, W_r = self.unpackTheta(theta)
         X, Y, out_error = map(np.atleast_2d, [X, Y, out_error])
