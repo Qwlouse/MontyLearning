@@ -18,6 +18,7 @@ TODO:
 
 from __future__ import division, print_function, unicode_literals
 from collections import OrderedDict # TODO: Check if this is necessary
+from configobj import ConfigObj
 from functools import wraps
 
 def construct_arguments(f, options, args, kwargs):
@@ -61,9 +62,13 @@ def construct_arguments(f, options, args, kwargs):
 
 
 class Experiment(object):
-    def __init__(self):
+    def __init__(self, filename=None):
+        if filename is not None:
+            self.options = ConfigObj(filename, unrepr=True)
+        else :
+            self.options = ConfigObj(unrepr=True)
         self.stages = OrderedDict()
-        self.options = {}
+
 
     def stage(self, f):
         @wraps(f)
