@@ -4,8 +4,6 @@
 The amazing Experiment class i dreamt up recently.
 It should be a kind of ML-Experiment-build-system-checkpointer-...
 TODO:
- - provide special logger parameter
- - time stage execution
  - write report
  - save results to disk if stage is costly and load them next time
  - automatic repetition of a stage with mean and var of the result
@@ -21,6 +19,7 @@ from configobj import ConfigObj
 from functools import wraps
 import numpy as np
 import logging
+import time
 
 RANDOM_SEED_RANGE = 0, 1000000
 
@@ -125,6 +124,12 @@ class Experiment(object):
         @wraps(f)
         def wrapped(*args, **kwargs):
             arguments = self.construct_arguments(f, args, kwargs)
-            return f(**arguments)
+            start_time = time.time()
+            #### Run the function ####
+            result = f(**arguments)
+            ##########################
+            end_time = time.time()
+            self.logger.info("Completed Stage '%s' in %2.2f sec"%(f.func_name, end_time-start_time))
+            return result
         self.stages[f.func_name] = wrapped
         return wrapped
