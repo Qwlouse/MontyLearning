@@ -29,7 +29,6 @@ def test_stage_decorator_retains_docstring():
 
     assert_equal(foo.__doc__.strip(), "Test-Docstring")
 
-
 def test_stage_decorator_retains_function_name():
     ex1 = Experiment()
 
@@ -53,7 +52,6 @@ def test_Experiment_keeps_track_of_stages():
     assert_equal(ex1.stages["foo"], foo)
     assert_equal(ex1.stages["bar"], bar)
     assert_equal(ex1.stages["baz"], baz)
-
 
 def test_Experiment_preserves_order_of_stages(): # TODO: Is that necessary?
     ex1 = Experiment()
@@ -155,6 +153,8 @@ def test_experiment_reads_options_from_file():
         foo=1
         bar=7.5
         baz='abc'
+        complex=[1, 2.0, 'a', [1, 2]]
+        d={'a' : 1, 'b' : 2}
         """)
         f.flush()
         ex1 = Experiment(f.name)
@@ -164,3 +164,51 @@ def test_experiment_reads_options_from_file():
         assert_equal(ex1.options['bar'], 7.5)
         assert_true("baz" in ex1.options)
         assert_equal(ex1.options['baz'], "abc")
+        assert_true("complex" in ex1.options)
+        assert_equal(ex1.options['complex'], [1, 2.0, 'a', [1, 2]])
+        assert_true("d" in ex1.options)
+        assert_equal(ex1.options['d'], {'a' : 1, 'b' : 2})
+
+def test_experiment_generates_seed():
+    ex1 = Experiment()
+    assert_true(type(ex1.seed) is int )
+
+def test_experiment_reads_seed_from_file():
+    with NamedTemporaryFile() as f:
+        f.write("""
+        seed=12345
+        """)
+        f.flush()
+        ex1 = Experiment(f.name)
+        assert_equal(ex1.seed, 12345)
+
+def test_experiment_takes_seed_as_kwarg():
+    ex1 = Experiment(seed=12345)
+    assert_equal(ex1.seed, 12345)
+
+def test_stage_seeds_deterministic():
+    ex1 = Experiment(seed=12345)
+    @ex1.stage
+    def foo(rnd):
+        return rnd.randint(10000)
+    r1 = foo()
+
+    ex1 = Experiment(seed=12345)
+    @ex1.stage
+    def foo(rnd):
+        return rnd.randint(10000)
+    r2 = foo()
+
+    assert_equal(r1, r2)
+
+def test_repeated_stages_are_seeded_differently():
+    ex1 = Experiment(seed=12345)
+    @ex1.stage
+    def foo(rnd):
+        return rnd.randint(10000)
+
+    r1 = foo()
+    r2 = foo()
+
+    assert_true(r1 != r2)
+
