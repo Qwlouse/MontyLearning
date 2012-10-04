@@ -4,7 +4,6 @@
 The amazing Experiment class i dreamt up recently.
 It should be a kind of ML-Experiment-build-system-checkpointer-...
 TODO:
- - provide special rnd parameter with deterministic seeding
  - provide special logger parameter
  - time stage execution
  - write report
@@ -13,6 +12,7 @@ TODO:
  - add notion of a run, i.e. executing many stages together
    but tying them together should be highly customizable (ideally just write a method)
    and support many of the stage features too (parameters, loggers, (rnd), many-runs
+ - make init take also strings and file-objects for configuration
 """
 
 from __future__ import division, print_function, unicode_literals
@@ -20,14 +20,19 @@ from collections import OrderedDict # TODO: Check if this is necessary
 from configobj import ConfigObj
 from functools import wraps
 import numpy as np
+import logging
 
 RANDOM_SEED_RANGE = 0, 1000000
 
 
 class Experiment(object):
-    def __init__(self, filename=None, seed=None):
+    def __init__(self, filename=None, seed=None, logger=None):
+        self.setup_logging(logger)
+
+
         # load options from config file
         if filename is not None:
+            self.logger.info("Loading config file {}".format(filename))
             self.options = ConfigObj(filename, unrepr=True)
         else :
             self.options = ConfigObj(unrepr=True)
@@ -39,12 +44,28 @@ class Experiment(object):
             self.seed = self.options['seed']
         else:
             self.seed = np.random.randint(*RANDOM_SEED_RANGE)
-            print("Warning: No Seed given. Using seed={}.\n"
-                  "Set in config file to repeat experiment".format(self.seed))
+            self.logger.warn("No Seed given. Using seed={}. Set in config "
+                             "file to repeat experiment".format(self.seed))
         self.prng = np.random.RandomState(self.seed)
 
         # init stages
         self.stages = OrderedDict()
+
+    def setup_logging(self, logger):
+        # setup logging
+        if logger is not None:
+            self.logger = logger
+        else :
+            self.logger = logging.getLogger("Experiment")
+            self.logger.setLevel(logging.INFO)
+            ch = logging.StreamHandler()
+            ch.setLevel(logging.INFO)
+            formatter = logging.Formatter('%(levelname)s - %(name)s - %(message)s')
+            ch.setFormatter(formatter)
+            # add ch to logger
+            self.logger.addHandler(ch)
+
+            self.logger.info("No Logger configured: Using generic Experiment Logger")
 
 
     def construct_arguments(self, f, args, kwargs):
