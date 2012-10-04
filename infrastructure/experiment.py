@@ -90,6 +90,9 @@ class Experiment(object):
         default_arguments = dict(zip(vars[-len(defaults):], defaults))
         positional_arguments = dict(zip(vars[:len(args)], args))
 
+        def is_free_argument(arg):
+            return arg in vars and arg not in positional_arguments and arg not in kwargs
+
         #check for multiple explicit arguments
         duplicate_arguments = [v for v in vars if v in positional_arguments and v in kwargs]
         if duplicate_arguments :
@@ -102,11 +105,13 @@ class Experiment(object):
         arguments.update(positional_arguments) # strongest
 
         # special rnd argument if it wasn't passed manually
-        if 'rnd' in vars and \
-           'rnd' not in positional_arguments and \
-           'rnd' not in kwargs :
+        if is_free_argument('rnd'):
             rnd = np.random.RandomState(self.prng.randint(*RANDOM_SEED_RANGE))
             arguments['rnd'] = rnd
+
+        # special logger argument
+        if is_free_argument('logger'):
+            arguments['logger'] = self.logger.getChild(f.func_name)
 
         # check if after all some arguments are still missing
         missing_arguments = [v for v in vars if v not in arguments]

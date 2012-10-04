@@ -4,7 +4,9 @@ from __future__ import division, print_function, unicode_literals
 from tempfile import NamedTemporaryFile
 from helpers import *
 from infrastructure.experiment import Experiment
-
+import logging
+# don't gather logging spam
+logging.disable(logging.CRITICAL)
 
 def test_Experiment_constructor_works():
     ex1 = Experiment()
