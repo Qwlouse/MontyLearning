@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # coding=utf-8
 from __future__ import division, print_function, unicode_literals
+from tempfile import NamedTemporaryFile
 from helpers import *
 from infrastructure.experiment import Experiment
 
@@ -54,7 +55,7 @@ def test_Experiment_keeps_track_of_stages():
     assert_equal(ex1.stages["baz"], baz)
 
 
-def test_Experiment_preserves_order_of_stages():
+def test_Experiment_preserves_order_of_stages(): # TODO: Is that necessary?
     ex1 = Experiment()
 
     @ex1.stage
@@ -147,3 +148,19 @@ def test_stage_with_missing_arguments_raises_TypeError():
 
     #noinspection PyArgumentList
     foo(1)
+
+def test_experiment_reads_options_from_file():
+    with NamedTemporaryFile() as f:
+        f.write("""
+        foo=1
+        bar=7.5
+        baz='abc'
+        """)
+        f.flush()
+        ex1 = Experiment(f.name)
+        assert_true("foo" in ex1.options)
+        assert_equal(ex1.options['foo'], 1)
+        assert_true("bar" in ex1.options)
+        assert_equal(ex1.options['bar'], 7.5)
+        assert_true("baz" in ex1.options)
+        assert_equal(ex1.options['baz'], "abc")
