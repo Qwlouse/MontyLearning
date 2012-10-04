@@ -28,7 +28,6 @@ class Experiment(object):
     def __init__(self, filename=None, seed=None, logger=None):
         self.setup_logging(logger)
 
-
         # load options from config file
         if filename is not None:
             self.logger.info("Loading config file {}".format(filename))
