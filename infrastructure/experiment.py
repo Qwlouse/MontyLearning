@@ -21,22 +21,32 @@ from __future__ import division, print_function, unicode_literals
 from collections import OrderedDict # TODO: Check if this is necessary
 from configobj import ConfigObj
 from functools import wraps
+import inspect
 import numpy as np
 import logging
 import time
+import os
+from StringIO import StringIO
 
 RANDOM_SEED_RANGE = 0, 1000000
 
 
 class Experiment(object):
-    def __init__(self, filename=None, seed=None, logger=None):
+    def __init__(self, config=None, seed=None, logger=None):
         self.setup_logging(logger)
 
-        # load options from config file
-        if filename is not None:
-            self.logger.info("Loading config file {}".format(filename))
-            self.options = ConfigObj(filename, unrepr=True)
-        else :
+        # load options from config
+        if isinstance(config, basestring) :
+            if os.path.exists(config):
+                self.logger.info("Loading config file {}".format(config))
+                self.options = ConfigObj(config, unrepr=True, encoding="UTF-8")
+            else :
+                self.logger.info("Reading configuration from string.")
+                self.options = ConfigObj(StringIO(str(config)), unrepr=True, encoding="UTF8")
+        elif hasattr(config, 'read'):
+            self.logger.info("Reading configuration from file.")
+            self.options = ConfigObj(config.split('\n'))
+        else:
             self.options = ConfigObj(unrepr=True)
 
         # get seed for random numbers in experiment
@@ -82,13 +92,13 @@ class Experiment(object):
             * you provide multiple values for an argument
             * after all the filling an argument is still missing
         """
-        vars = f.func_code.co_varnames
+        vars, _, _, defaults = inspect.getargspec(f)
         # check for erroneous kwargs
         wrong_kwargs = [v for v in kwargs if v not in vars]
         if wrong_kwargs :
             raise TypeError("{}() got unexpected keyword argument(s): {}".format(f.func_name, wrong_kwargs))
 
-        defaults = f.func_defaults or []
+        defaults = defaults or []
         default_arguments = dict(zip(vars[-len(defaults):], defaults))
         positional_arguments = dict(zip(vars[:len(args)], args))
 
