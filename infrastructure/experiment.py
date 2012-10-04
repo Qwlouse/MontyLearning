@@ -136,3 +136,8 @@ class Experiment(object):
             return result
         self.stages[f.func_name] = wrapped
         return wrapped
+
+    def main(self, f):
+        if f.__module__ == "__main__":
+            f()
+        return f
