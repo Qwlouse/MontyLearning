@@ -4,17 +4,16 @@
 The amazing Experiment class i dreamt up recently.
 It should be a kind of ML-Experiment-build-system-checkpointer-...
 TODO:
- - write report
+ - write report that is readable by humans and this package
  ! save results to disk if stage is costly and load them next time
  ! automatic repetition of a stage with mean and var of the result
- - add decorator for 'main', i.e. executing many stages together
-   but tying them together should be highly customizable (ideally just write a method)
-   and support many of the stage features too (parameters, loggers, (rnd), many-runs
- - make init take also strings and file-objects for configuration
+ - Main should support parameters, loggers, (rnd), many-runs
+ - main should also parse command line arguments
  - find out if current file is git-controlled and if it is checked in, warn otherwise
  - write commit hash to report
  ! automatize rerunning an experiment by checking out the appropriate version and feed the parameters
  ? gather versions of dependencies
+ - figure out how to incorporate plots
 """
 
 from __future__ import division, print_function, unicode_literals
