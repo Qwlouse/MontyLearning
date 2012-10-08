@@ -15,6 +15,17 @@ TYPE_DICT = {
     0xD : np.float32,
     0xE : np.float64
 }
+REVERSE_TYPE_DICT = {
+    np.zeros(1, dtype=np.uint8).dtype   : b"\x08",
+    np.zeros(1, dtype=np.int8).dtype    : b"\x09",
+    np.zeros(1, dtype=np.int16).dtype   : b"\x0B",
+    np.zeros(1, dtype=np.int32).dtype   : b"\x0C",
+    np.zeros(1, dtype=np.float32).dtype : b"\x0D",
+    np.zeros(1, dtype=np.float64).dtype : b"\x0E"
+}
+
+
+
 
 def open_idx_file(filename):
     with open(filename, 'rb') as f:
@@ -27,5 +38,10 @@ def open_idx_file(filename):
         size = reduce(np.multiply, shape)
         return np.fromfile(f, TYPE_DICT[type_code], size).byteswap().reshape(shape)
 
-def write_idx_file(filename):
-    pass
+def write_idx_file(filename, A):
+    with open(filename, 'wb') as f:
+        f.write(b"\x00\x00") # zeros
+        f.write(REVERSE_TYPE_DICT[A.dtype]) # type
+        f.write(b"%c"%len(A.shape)) # nr of dims
+        np.array(A.shape, dtype=np.int32).byteswap(True).tofile(f) # shape
+        A.byteswap(False).tofile(f) # numbers
