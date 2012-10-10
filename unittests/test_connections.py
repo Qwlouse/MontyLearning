@@ -138,6 +138,7 @@ def test_ForwardAndRecurrentConnections_backprop_random_example_gradient_check()
     grad_e = approx_fprime(theta, f, 1e-8)
     assert_allclose(grad_c, grad_e, rtol=1e-3, atol=1e-5)
 
+@nottest
 def test_ForwardAndRecurrentSigmoidConnections_backprop_random_example_gradient_check():
     frc = ForwardAndRecurrentSigmoidConnection(4, 3)
     theta = np.random.randn(frc.get_param_dim())
