@@ -8,6 +8,8 @@ from config import PASCAL_PATH
 import os.path as path
 import numpy as np
 from scipy.misc import imread
+from arraypad import pad
+from infrastructure.idxconverter import write_idx_file
 
 IMAGE_SET_DIR          = path.join(PASCAL_PATH, "ImageSets")
 SEGMENTATION_SET_DIR   = path.join(PASCAL_PATH, "ImageSets/Segmentation")
@@ -22,7 +24,7 @@ seg_trainval_set_file = path.join(SEGMENTATION_SET_DIR, "trainval.txt")
 
 # classes
 BACKGROUND, AEROPLANE, BICYCLE, BIRD, BOAT, BOTTLE, BUS, CAR, CAT, CHAIR, \
-COW, TABLE, DOG, HORSE, MOTORBIKE, PERSON, PLANT, SHEEP, SOFA, TRAIN, TV = range(21)
+COW, TABLE, DOG, HORSE, MOTORBIKE, PERSON, PLANT, SHEEP, SOFA, TRAIN, TV, VOID = range(22)
 
 
 def get_image_paths_for(img_path, set_filename, ending):
@@ -62,11 +64,33 @@ def get_classes_matrix(label_img_path_iter, nr_of_classes = 22):
 
 def get_idx_containing_only(class_matrix, allowed_classes):
     """
-    Given a classes_matrix determin the indices of those images containing only certain classes.
+    Given a classes_matrix determine the indices of those images containing only certain classes.
     """
     classes = class_matrix.copy()
     for i in range(class_matrix.shape[1]):
         if i in allowed_classes:
             classes[:,i] = 0
 
-    return np.nonzero(classes.sum(1) == 0)
+    return np.nonzero(classes.sum(1) == 0)[0]
+
+def get_image_subset(imset_iter, valid_idx):
+    return [im_path for i, im_path in enumerate(imset_iter) if i in valid_idx]
+
+
+def get_min_and_max_size(imageset, grayscale=False):
+    sizes = [img.shape for img in load_images_as_ndarrays(imageset, grayscale)]
+    sizes = np.array(sizes)
+    return sizes.min(0), sizes.max(0)
+
+def load_images_as_ndarrays(image_set, grayscale=False):
+    return  map(lambda x : imread(x, flatten=grayscale), image_set)
+
+def pad_images_and_equalize_sizes(images, padding=(0, 0, 0), mode="reflect"):
+    images_padded = []
+    max = np.max((im.shape for im in images), axis=0)
+    for im in images:
+        pad_width = [(p, p+e) for p, e in zip(padding, (max - im.shape))]
+        im_padded = pad(im, pad_width, mode=str(mode))
+        images_padded.append(im_padded)
+    return np.array(images_padded)
+
