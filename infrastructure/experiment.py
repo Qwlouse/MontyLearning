@@ -27,6 +27,8 @@ import time
 import os
 from StringIO import StringIO
 
+__all__ = ['Experiment']
+
 RANDOM_SEED_RANGE = 0, 1000000
 
 
