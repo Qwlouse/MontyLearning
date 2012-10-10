@@ -85,12 +85,12 @@ def test_Experiment_stores_options():
     ex1.options["alpha"] = 0.7
     assert_equal(ex1.options["alpha"], 0.7)
 
-def test_stage_applies_options():
+def test_fill_args_applies_options():
     ex1 = Experiment()
     ex1.options["alpha"] = 0.7
     ex1.options["beta"] = 1.2
 
-    @ex1.stage
+    @ex1.fill_args
     def foo(alpha, beta):
         return alpha, beta
 
@@ -102,7 +102,7 @@ def test_stage_overrides_default_with_options():
     ex1.options["alpha"] = 0.7
     ex1.options["beta"] = 1.2
 
-    @ex1.stage
+    @ex1.fill_args
     def foo(alpha=0, beta=0):
         return alpha, beta
 
@@ -188,24 +188,24 @@ def test_experiment_takes_seed_as_kwarg():
     ex1 = Experiment(seed=12345)
     assert_equal(ex1.seed, 12345)
 
-def test_stage_seeds_deterministic():
+def test_fill_args_seeds_deterministic():
     ex1 = Experiment(seed=12345)
-    @ex1.stage
+    @ex1.fill_args
     def foo(rnd):
         return rnd.randint(10000)
     r1 = foo()
 
     ex1 = Experiment(seed=12345)
-    @ex1.stage
+    @ex1.fill_args
     def foo(rnd):
         return rnd.randint(10000)
     r2 = foo()
 
     assert_equal(r1, r2)
 
-def test_repeated_stages_are_seeded_differently():
+def test_repeated_fill_args_are_seeded_differently():
     ex1 = Experiment(seed=12345)
-    @ex1.stage
+    @ex1.fill_args
     def foo(rnd):
         return rnd.randint(10000)
 

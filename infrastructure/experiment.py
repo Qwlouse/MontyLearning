@@ -130,21 +130,56 @@ class Experiment(object):
             raise TypeError("{}() is missing value(s) for {}".format(f.func_name, missing_arguments))
         return arguments
 
-
-
-    def stage(self, f):
+    def fill_args(self, f):
+        """
+        Decorator that fills in arguments such that:
+          - the original explicit call arguments are preserved
+          - missing arguments are filled in by name using options (if possible)
+          - default arguments are overridden by options
+          - a special 'rnd' parameter is provided containing a
+            deterministically seeded numpy.random.RandomState
+          - a special 'logger' parameter is provided containing a child of
+            the experiment logger with the name of the decorated function
+        Errors are still thrown if:
+          - you pass an unexpected keyword argument
+          - you provide multiple values for an argument
+          - after all the filling an argument is still missing
+        """
         @wraps(f)
         def wrapped(*args, **kwargs):
             arguments = self.construct_arguments(f, args, kwargs)
+            return f(**arguments)
+        return wrapped
+
+    def stage(self, f):
+        """
+        Add the decorated function to the experiment stages and time the execution.
+        """
+        @wraps(f)
+        def wrapped(*args, **kwargs):
             start_time = time.time()
             #### Run the function ####
-            result = f(**arguments)
+            result = f(*args, **kwargs)
             ##########################
             end_time = time.time()
             self.logger.info("Completed Stage '%s' in %2.2f sec"%(f.func_name, end_time-start_time))
             return result
         self.stages[f.func_name] = wrapped
         return wrapped
+
+    def full_stage(self, f):
+        """
+        @ex.full_stage
+        def foo(): pass
+
+        Is equivalent to :
+
+        @ex.fill_args
+        @ex.stage
+        def foo(): pass
+        """
+        return self.fill_args(self.stage(f))
+
 
     def main(self, f):
         if f.__module__ == "__main__":
