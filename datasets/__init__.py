@@ -11,6 +11,6 @@ Datasets are presented in the scikits.learn format. That means a Bunch containin
 from __future__ import division, unicode_literals, print_function
 
 # Standard Datasets from sklearn
-from scikits.learn.datasets import load_iris
+from sklearn.datasets import load_iris
 
 from toy_examples import *
