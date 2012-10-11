@@ -86,3 +86,11 @@ def test_sshash_different_type_nparrays_different_results():
     a = np.arange(12, dtype=np.uint8).reshape(3,4)
     b = np.arange(12, dtype=np.uint16).reshape(3,4)
     assert_not_equal(sshash(a), sshash(b))
+
+def test_sshash_uses_hash_method():
+    class foo(object):
+        def __hash__(self):
+            return 27
+
+    f = foo()
+    assert_equal(sshash(f), 27)
