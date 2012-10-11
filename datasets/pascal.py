@@ -85,12 +85,12 @@ def get_min_and_max_size(imageset, grayscale=False):
 def load_images_as_ndarrays(image_set, grayscale=False):
     return  map(lambda x : imread(x, flatten=grayscale), image_set)
 
-def pad_images_and_equalize_sizes(images, padding=(0, 0, 0), mode="reflect"):
+def pad_images_and_equalize_sizes(images, padding=(0, 0, 0), mode="reflect", **kwargs):
     images_padded = []
-    max = np.max((im.shape for im in images), axis=0)
+    max = np.max([im.shape for im in images], axis=0)
     for im in images:
         pad_width = [(p, p+e) for p, e in zip(padding, (max - im.shape))]
-        im_padded = pad(im, pad_width, mode=str(mode))
+        im_padded = pad(im, pad_width, mode=str(mode), **kwargs)
         images_padded.append(im_padded)
     return np.array(images_padded)
 
