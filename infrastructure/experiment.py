@@ -23,13 +23,104 @@ from functools import wraps
 import inspect
 import numpy as np
 import logging
+import shelve
 import time
 import os
 from StringIO import StringIO
+from infrastructure.hasher import sshash
 
 __all__ = ['Experiment']
 
 RANDOM_SEED_RANGE = 0, 1000000
+
+
+def get_signature(f):
+    args, varargs_name, kw_wildcard_name, defaults = inspect.getargspec(f)
+    defaults = defaults or []
+    pos_args = args[:len(args)-len(defaults)]
+    kwargs = dict(zip(args[-len(defaults):], defaults))
+    return {'args' : args,
+            'positional' : pos_args,
+            'kwargs' : kwargs,
+            'varargs_name' : varargs_name,
+            'kw_wildcard_name' : kw_wildcard_name}
+
+class StageFunction(object):
+    def __init__(self, name, f, experiment, logger, random):
+        self.function = f
+        self.experiment = experiment
+        self.logger = logger
+        self.random = random
+        # preserve meta_information
+        self.__name__ = name
+        self.func_name = name
+        self.__doc__ = f.__doc__
+        # extract extra info
+        self.source = inspect.getsource(f)
+        self.signature = get_signature(f)
+
+    def construct_arguments(self, args, kwargs, options):
+        """
+        For a given function f and the *args and **kwargs it was called with,
+        construct a new dictionary of arguments such that:
+          - the original explicit call arguments are preserved
+          - missing arguments are filled in by name using options (if possible)
+          - default arguments are overridden by options
+          - sensible errors are thrown if:
+            * you pass an unexpected keyword argument
+            * you provide multiple values for an argument
+            * after all the filling an argument is still missing
+        """
+        arguments = dict()
+        arguments.update(self.signature['kwargs']) # weakest: default arguments:
+        arguments.update((v, options[v]) for v in self.signature['args'] if v in options) # options
+        if 'rnd' in self.signature['args'] :
+            arguments['rnd'] = self.random
+        if 'logger' in self.signature['args']:
+            arguments['logger'] = self.logger
+        arguments.update(kwargs) # keyword arguments
+        positional_arguments = dict(zip(self.signature['positional'], args))
+        print(positional_arguments)
+        arguments.update(positional_arguments) # strongest: positional arguments
+        return arguments
+
+    def assert_no_missing_args(self, arguments):
+        # check if after all some arguments are still missing
+        missing_arguments = [v for v in self.signature['args'] if v not in arguments]
+        if missing_arguments :
+            raise TypeError("{}() is missing value(s) for {}".format(self.__name__, missing_arguments))
+
+    def assert_no_unexpected_kwargs(self, kwargs):
+        # check for erroneous kwargs
+        wrong_kwargs = [v for v in kwargs if v not in self.signature['args']]
+        if wrong_kwargs :
+            raise TypeError("{}() got unexpected keyword argument(s): {}".format(self.__name__, wrong_kwargs))
+
+    def assert_no_duplicate_args(self, args, kwargs):
+        #check for multiple explicit arguments
+        positional_arguments = self.signature['positional'][:len(args)]
+        duplicate_arguments = [v for v in positional_arguments if v in kwargs]
+        if duplicate_arguments :
+            raise TypeError("{}() got multiple values for argument(s) {}".format(self.__name__, duplicate_arguments))
+
+
+    def __call__(self, *args, **kwargs):
+        # Modify Arguments
+        self.assert_no_unexpected_kwargs(kwargs)
+        self.assert_no_duplicate_args(args, kwargs)
+        arguments = self.construct_arguments(args, kwargs, self.experiment.options)
+        self.assert_no_missing_args(arguments)
+        #### Run the function ####
+        start_time = time.time()
+        result = self.function(**arguments)
+        end_time = time.time()
+        ##########################
+        self.logger.info("Completed Stage '%s' in %2.2f sec"%(self.__name__, end_time-start_time))
+        return result
+
+    def __hash__(self):
+        return hash(self.source)
+
 
 
 class Experiment(object):
@@ -81,106 +172,33 @@ class Experiment(object):
             self.logger.info("No Logger configured: Using generic Experiment Logger")
 
 
-    def construct_arguments(self, f, args, kwargs):
-        """
-        For a given function f and the *args and **kwargs it was called with,
-        construct a new dictionary of arguments such that:
-          - the original explicit call arguments are preserved
-          - missing arguments are filled in by name using options (if possible)
-          - default arguments are overridden by options
-          - sensible errors are thrown if:
-            * you pass an unexpected keyword argument
-            * you provide multiple values for an argument
-            * after all the filling an argument is still missing
-        """
-        vars, _, _, defaults = inspect.getargspec(f)
-        # check for erroneous kwargs
-        wrong_kwargs = [v for v in kwargs if v not in vars]
-        if wrong_kwargs :
-            raise TypeError("{}() got unexpected keyword argument(s): {}".format(f.func_name, wrong_kwargs))
-
-        defaults = defaults or []
-        default_arguments = dict(zip(vars[-len(defaults):], defaults))
-        positional_arguments = dict(zip(vars[:len(args)], args))
-
-        def is_free_argument(arg):
-            return arg in vars and arg not in positional_arguments and arg not in kwargs
-
-        #check for multiple explicit arguments
-        duplicate_arguments = [v for v in vars if v in positional_arguments and v in kwargs]
-        if duplicate_arguments :
-            raise TypeError("{}() got multiple values for argument(s) {}".format(f.func_name, duplicate_arguments))
-
-        arguments = dict()
-        arguments.update(default_arguments) # weakest
-        arguments.update((v, self.options[v]) for v in vars if v in self.options)
-        arguments.update(kwargs)
-        arguments.update(positional_arguments) # strongest
-
-        # special rnd argument if it wasn't passed manually
-        if is_free_argument('rnd'):
-            rnd = np.random.RandomState(self.prng.randint(*RANDOM_SEED_RANGE))
-            arguments['rnd'] = rnd
-
-        # special logger argument
-        if is_free_argument('logger'):
-            arguments['logger'] = self.logger.getChild(f.func_name)
-
-        # check if after all some arguments are still missing
-        missing_arguments = [v for v in vars if v not in arguments]
-        if missing_arguments :
-            raise TypeError("{}() is missing value(s) for {}".format(f.func_name, missing_arguments))
-        return arguments
-
-    def fill_args(self, f):
-        """
-        Decorator that fills in arguments such that:
-          - the original explicit call arguments are preserved
-          - missing arguments are filled in by name using options (if possible)
-          - default arguments are overridden by options
-          - a special 'rnd' parameter is provided containing a
-            deterministically seeded numpy.random.RandomState
-          - a special 'logger' parameter is provided containing a child of
-            the experiment logger with the name of the decorated function
-        Errors are still thrown if:
-          - you pass an unexpected keyword argument
-          - you provide multiple values for an argument
-          - after all the filling an argument is still missing
-        """
-        @wraps(f)
-        def wrapped(*args, **kwargs):
-            arguments = self.construct_arguments(f, args, kwargs)
-            return f(**arguments)
-        return wrapped
-
     def stage(self, f):
         """
-        Add the decorated function to the experiment stages and time the execution.
-        """
-        @wraps(f)
-        def wrapped(*args, **kwargs):
-            start_time = time.time()
-            #### Run the function ####
-            result = f(*args, **kwargs)
-            ##########################
-            end_time = time.time()
-            self.logger.info("Completed Stage '%s' in %2.2f sec"%(f.func_name, end_time-start_time))
-            return result
-        self.stages[f.func_name] = wrapped
-        return wrapped
+        Decorator, that converts the function into a stage of this experiment.
+        The stage times the execution.
 
-    def full_stage(self, f):
-        """
-        @ex.full_stage
-        def foo(): pass
-
-        Is equivalent to :
-
-        @ex.stage
-        @ex.fill_args
-        def foo(): pass
-        """
-        return self.stage(self.fill_args(f))
+        The stage fills in arguments such that:
+        - the original explicit call arguments are preserved
+        - missing arguments are filled in by name using options (if possible)
+        - default arguments are overridden by options
+        - a special 'rnd' parameter is provided containing a
+        deterministically seeded numpy.random.RandomState
+        - a special 'logger' parameter is provided containing a child of
+        the experiment logger with the name of the decorated function
+        Errors are still thrown if:
+        - you pass an unexpected keyword argument
+        - you provide multiple values for an argument
+        - after all the filling an argument is still missing"""
+        if isinstance(f, StageFunction): # do nothing if it is already a stage
+            # TODO: do we need to allow beeing stage of multiple experiments?
+            return f
+        else :
+            stage_name = f.func_name
+            stage_logger = self.logger.getChild(stage_name)
+            stage_random = np.random.RandomState(self.prng.randint(*RANDOM_SEED_RANGE))
+            stage = StageFunction(stage_name, f, self, stage_logger, stage_random)
+            self.stages[stage_name] = stage
+            return stage
 
 
     def main(self, f):

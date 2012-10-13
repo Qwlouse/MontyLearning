@@ -90,7 +90,7 @@ def test_fill_args_applies_options():
     ex1.options["alpha"] = 0.7
     ex1.options["beta"] = 1.2
 
-    @ex1.fill_args
+    @ex1.stage
     def foo(alpha, beta):
         return alpha, beta
 
@@ -102,7 +102,7 @@ def test_stage_overrides_default_with_options():
     ex1.options["alpha"] = 0.7
     ex1.options["beta"] = 1.2
 
-    @ex1.fill_args
+    @ex1.stage
     def foo(alpha=0, beta=0):
         return alpha, beta
 
@@ -190,13 +190,13 @@ def test_experiment_takes_seed_as_kwarg():
 
 def test_fill_args_seeds_deterministic():
     ex1 = Experiment(seed=12345)
-    @ex1.fill_args
+    @ex1.stage
     def foo(rnd):
         return rnd.randint(10000)
     r1 = foo()
 
     ex1 = Experiment(seed=12345)
-    @ex1.fill_args
+    @ex1.stage
     def foo(rnd):
         return rnd.randint(10000)
     r2 = foo()
@@ -205,7 +205,7 @@ def test_fill_args_seeds_deterministic():
 
 def test_repeated_fill_args_are_seeded_differently():
     ex1 = Experiment(seed=12345)
-    @ex1.fill_args
+    @ex1.stage
     def foo(rnd):
         return rnd.randint(10000)
 
