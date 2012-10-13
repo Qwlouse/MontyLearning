@@ -6,7 +6,7 @@
 # contain the configuration file.
 
 seed = 1234567890
-n = 3
+n = 4
 m = 4
 bias = 1
 
@@ -20,14 +20,14 @@ from experiment import Experiment
 ex = Experiment(__doc__)
 
 @ex.stage
-def create_data(n, m, bias):
-    #logger.info("Creating {}x{} array with bias {}.".format(n,m, bias))
+def create_data(n, m, bias, logger):
+    logger.info("Creating {}x{} array with bias {}.".format(n,m, bias))
     A = np.arange(n*m).reshape(n,m) + bias
     return A
 
 @ex.stage
-def square(A):
-    #logger.info("Squaring {}x{} array.".format(A.shape[0], A.shape[1]))
+def square(A, logger):
+    logger.info("Squaring {}x{} array.".format(A.shape[0], A.shape[1]))
     return A * A
 
 @ex.main

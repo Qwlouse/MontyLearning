@@ -58,7 +58,7 @@ class StageFunction(object):
         self.source = str(inspect.getsource(f))
         self.signature = get_signature(f)
 
-    def construct_arguments(self, args, kwargs, options):
+    def apply_options(self, args, kwargs, options):
         """
         For a given function f and the *args and **kwargs it was called with,
         construct a new dictionary of arguments such that:
@@ -73,10 +73,6 @@ class StageFunction(object):
         arguments = dict()
         arguments.update(self.signature['kwargs']) # weakest: default arguments:
         arguments.update((v, options[v]) for v in self.signature['args'] if v in options) # options
-        if 'rnd' in self.signature['args'] :
-            arguments['rnd'] = self.random
-        if 'logger' in self.signature['args']:
-            arguments['logger'] = self.logger
         arguments.update(kwargs) # keyword arguments
         positional_arguments = dict(zip(self.signature['positional'], args))
         arguments.update(positional_arguments) # strongest: positional arguments
@@ -101,15 +97,24 @@ class StageFunction(object):
         if duplicate_arguments :
             raise TypeError("{}() got multiple values for argument(s) {}".format(self.__name__, duplicate_arguments))
 
+    def add_random_arg_to(self, arguments):
+        if 'rnd' in self.signature['args']  and 'rnd' not in arguments:
+            arguments['rnd'] = self.random
+
+    def add_logger_arg_to(self, arguments):
+        if 'logger' in self.signature['args']:
+            arguments['logger'] = self.logger
 
     def __call__(self, *args, **kwargs):
         # Modify Arguments
         self.assert_no_unexpected_kwargs(kwargs)
         self.assert_no_duplicate_args(args, kwargs)
-        arguments = self.construct_arguments(args, kwargs, self.experiment.options)
+        arguments = self.apply_options(args, kwargs, self.experiment.options)
+        self.add_random_arg_to(arguments)
+        key = (self.source, dict(arguments)) # use arguments without logger as cache-key
+        self.add_logger_arg_to(arguments)
         self.assert_no_missing_args(arguments)
         # Check for cached version
-        key = (self.source, arguments)
         try:
             result = self.experiment.cache[key]
             self.logger.info("Retrieved '%s' from cache. Skipping Execution"%self.__name__)
@@ -121,7 +126,6 @@ class StageFunction(object):
             self.logger.info("Completed Stage '%s' in %2.2f sec"%(self.__name__, end_time-start_time))
         ##########################
             self.experiment.cache[key] = result
-#            self.experiment.cache.sync()
         return result
 
     def __hash__(self):
