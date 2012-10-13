@@ -29,8 +29,14 @@ prefix_scheme = "seg_person_only-{color}-{set}-p{x_pad}x{y_pad}x{z_pad}-"
 # i think this should in fact look something like this, and then have the ability to repeat
 # stages for different sections
 # maybe like this:
-# with ex.optionset("color"):
-#     just_call_stage() # and get all the options from the color section
+# with ex.optionset("color") as o:
+#     o.just_call_stage() # and get all the options from the color section
+# for o in ex.optionsets(["color", "gray", "label"]):
+#     o.just_call_stage()
+#
+# We could even implement optionsweep like this
+# for o in ex.optionsweep(["gamma", "C", "lambda"], kernel=["linear", "RBF"])
+#     o.call_stage()
 
 # Padding
 x_pad = 100
