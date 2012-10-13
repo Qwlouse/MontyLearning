@@ -176,11 +176,11 @@ class Experiment(object):
 
         Is equivalent to :
 
-        @ex.fill_args
         @ex.stage
+        @ex.fill_args
         def foo(): pass
         """
-        return self.fill_args(self.stage(f))
+        return self.stage(self.fill_args(f))
 
 
     def main(self, f):
