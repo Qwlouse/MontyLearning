@@ -16,17 +16,18 @@ import numpy as np
 import time
 from experiment import Experiment
 
+
 ex = Experiment(__doc__)
 
-@ex.full_stage
-def create_data(n, m, bias, logger):
-    logger.info("Creating {}x{} array with bias {}.".format(n,m, bias))
+@ex.stage
+def create_data(n, m, bias):
+    #logger.info("Creating {}x{} array with bias {}.".format(n,m, bias))
     A = np.arange(n*m).reshape(n,m) + bias
     return A
 
-@ex.full_stage
-def square(A, logger):
-    logger.info("Squaring {}x{} array.".format(A.shape[0], A.shape[1]))
+@ex.stage
+def square(A):
+    #logger.info("Squaring {}x{} array.".format(A.shape[0], A.shape[1]))
     return A * A
 
 @ex.main

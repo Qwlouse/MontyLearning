@@ -19,7 +19,6 @@ TODO:
 from __future__ import division, print_function, unicode_literals
 from collections import OrderedDict # TODO: Check if this is necessary
 from configobj import ConfigObj
-from functools import wraps
 import inspect
 import numpy as np
 import logging
@@ -28,7 +27,7 @@ import time
 import os
 from StringIO import StringIO
 from infrastructure.hasher import sshash
-
+import weakref
 __all__ = ['Experiment']
 
 RANDOM_SEED_RANGE = 0, 1000000
@@ -48,7 +47,7 @@ def get_signature(f):
 class StageFunction(object):
     def __init__(self, name, f, experiment, logger, random):
         self.function = f
-        self.experiment = experiment
+        self.experiment = weakref.proxy(experiment)
         self.logger = logger
         self.random = random
         # preserve meta_information
@@ -56,7 +55,7 @@ class StageFunction(object):
         self.func_name = name
         self.__doc__ = f.__doc__
         # extract extra info
-        self.source = inspect.getsource(f)
+        self.source = str(inspect.getsource(f))
         self.signature = get_signature(f)
 
     def construct_arguments(self, args, kwargs, options):
@@ -80,7 +79,6 @@ class StageFunction(object):
             arguments['logger'] = self.logger
         arguments.update(kwargs) # keyword arguments
         positional_arguments = dict(zip(self.signature['positional'], args))
-        print(positional_arguments)
         arguments.update(positional_arguments) # strongest: positional arguments
         return arguments
 
@@ -110,16 +108,48 @@ class StageFunction(object):
         self.assert_no_duplicate_args(args, kwargs)
         arguments = self.construct_arguments(args, kwargs, self.experiment.options)
         self.assert_no_missing_args(arguments)
+        # Check for cached version
+        key = (self.source, arguments)
+        try:
+            result = self.experiment.cache[key]
+            self.logger.info("Retrieved '%s' from cache. Skipping Execution"%self.__name__)
+        except KeyError:
         #### Run the function ####
-        start_time = time.time()
-        result = self.function(**arguments)
-        end_time = time.time()
+            start_time = time.time()
+            result = self.function(**arguments)
+            end_time = time.time()
+            self.logger.info("Completed Stage '%s' in %2.2f sec"%(self.__name__, end_time-start_time))
         ##########################
-        self.logger.info("Completed Stage '%s' in %2.2f sec"%(self.__name__, end_time-start_time))
+            self.experiment.cache[key] = result
+#            self.experiment.cache.sync()
         return result
 
     def __hash__(self):
         return hash(self.source)
+
+
+class ShelveCache(object):
+    def __init__(self, filename):
+        self.shelve = shelve.open(filename)
+
+    def transform_key(self, key):
+        return hex(sshash(key))
+
+    def __getitem__(self, item):
+        return self.shelve[self.transform_key(item)]
+
+    def __setitem__(self, key, value):
+        self.shelve[self.transform_key(key)] = value
+
+    def __delitem__(self, key):
+        self.shelve.__delitem__(self.transform_key(key))
+
+    def __del__(self):
+        self.shelve.sync()
+        self.shelve.close()
+
+    def sync(self):
+        self.shelve.sync()
 
 
 
@@ -154,6 +184,7 @@ class Experiment(object):
 
         # init stages
         self.stages = OrderedDict()
+        self.cache = ShelveCache("experiment.shelve")
 
     def setup_logging(self, logger):
         # setup logging
