@@ -14,7 +14,8 @@ bias = 1
 from __future__ import division, print_function, unicode_literals
 import numpy as np
 import time
-from experiment import Experiment, ShelveCache
+from experiment import Experiment
+from infrastructure.caches import ShelveCache
 
 
 ex = Experiment( __doc__, cache=ShelveCache("experiment.shelve"))

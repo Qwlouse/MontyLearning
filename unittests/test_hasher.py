@@ -4,7 +4,7 @@
 from __future__ import division, print_function, unicode_literals
 import numpy as np
 from helpers import assert_not_equal, assert_true, assert_equal
-from infrastructure.hasher import sshash
+from infrastructure.caches import sshash
 
 def test_sshash_distinct_int_hashes():
     assert_not_equal(sshash(1), sshash(2))

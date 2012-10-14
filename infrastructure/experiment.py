@@ -5,7 +5,7 @@ The amazing Experiment class i dreamt up recently.
 It should be a kind of ML-Experiment-build-system-checkpointer-...
 TODO:
  - write report that is readable by humans and this package
- ! save results to disk if stage is costly and load them next time
+ - only cache if execution time passes threshold
  ! automatic repetition of a stage with mean and var of the result
  - Main should support parameters, loggers, (rnd), many-runs
  - main should also parse command line arguments
@@ -22,12 +22,11 @@ from configobj import ConfigObj
 import inspect
 import numpy as np
 import logging
-import shelve
 import time
 import os
 from StringIO import StringIO
-from infrastructure.hasher import sshash
-import weakref
+from infrastructure.caches import CacheStub
+
 __all__ = ['Experiment']
 
 RANDOM_SEED_RANGE = 0, 1000000
@@ -133,44 +132,6 @@ class StageFunction(object):
         return hash(self.source)
 
 
-class ShelveCache(object):
-    def __init__(self, filename):
-        self.shelve = shelve.open(filename)
-
-    def transform_key(self, key):
-        return hex(sshash(key))
-
-    def __getitem__(self, item):
-        return self.shelve[self.transform_key(item)]
-
-    def __setitem__(self, key, value):
-        self.shelve[self.transform_key(key)] = value
-
-    def __delitem__(self, key):
-        self.shelve.__delitem__(self.transform_key(key))
-
-    def __del__(self):
-        self.shelve.sync()
-        self.shelve.close()
-
-    def sync(self):
-        self.shelve.sync()
-
-class NoneDict(object):
-    def __getitem__(self, item):
-        raise KeyError("Key not Found.")
-
-    def __setitem__(self, key, value):
-        pass
-
-    def __delitem__(self, key):
-        pass
-
-    def sync(self):
-        pass
-
-
-
 class Experiment(object):
     def __init__(self, config=None, cache=None, seed=None, logger=None):
         self.setup_logging(logger)
@@ -202,7 +163,7 @@ class Experiment(object):
 
         # init stages
         self.stages = OrderedDict()
-        self.cache = cache or NoneDict()
+        self.cache = cache or CacheStub()
 
     def setup_logging(self, logger):
         # setup logging
