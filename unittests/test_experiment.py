@@ -3,16 +3,26 @@
 from __future__ import division, print_function, unicode_literals
 from tempfile import NamedTemporaryFile
 from helpers import *
-from infrastructure.experiment import Experiment
+from infrastructure.caches import CacheStub
+from infrastructure.experiment import Experiment, createExperiment
 import logging
 # don't gather logging spam
 logging.disable(logging.CRITICAL)
 
+NO_LOGGER = logging.getLogger('ignore')
+NO_LOGGER.disabled = 1
+
+def create_basic_Experiment(seed = 123456):
+    name = "TestExperiment"
+    options = {}
+    cache = CacheStub()
+    return Experiment(name, NO_LOGGER, options, seed, cache)
+
 def test_Experiment_constructor_works():
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
 
 def test_Experiment_provides_stage_decorator():
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
 
     @ex1.stage
     def foo(): pass
@@ -20,7 +30,7 @@ def test_Experiment_provides_stage_decorator():
     assert_true(hasattr(foo, '__call__'))
 
 def test_stage_decorator_retains_docstring():
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
 
     @ex1.stage
     def foo():
@@ -32,7 +42,7 @@ def test_stage_decorator_retains_docstring():
     assert_equal(foo.__doc__.strip(), "Test-Docstring")
 
 def test_stage_decorator_retains_function_name():
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
 
     @ex1.stage
     def foo(): pass
@@ -40,7 +50,7 @@ def test_stage_decorator_retains_function_name():
     assert_equal(foo.func_name, "foo")
 
 def test_Experiment_keeps_track_of_stages():
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
 
     @ex1.stage
     def foo(): pass
@@ -56,7 +66,7 @@ def test_Experiment_keeps_track_of_stages():
     assert_equal(ex1.stages["baz"], baz)
 
 def test_Experiment_preserves_order_of_stages(): # TODO: Is that necessary?
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
 
     @ex1.stage
     def foo(): pass
@@ -70,7 +80,7 @@ def test_Experiment_preserves_order_of_stages(): # TODO: Is that necessary?
     assert_equal(ex1.stages.keys(), ["foo", "bar", "baz"])
 
 def test_stage_executes_function():
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
     a = []
 
     @ex1.stage
@@ -81,12 +91,12 @@ def test_stage_executes_function():
     assert_equal(a, ["executed"])
 
 def test_Experiment_stores_options():
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
     ex1.options["alpha"] = 0.7
     assert_equal(ex1.options["alpha"], 0.7)
 
 def test_fill_args_applies_options():
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
     ex1.options["alpha"] = 0.7
     ex1.options["beta"] = 1.2
 
@@ -98,7 +108,7 @@ def test_fill_args_applies_options():
     assert_equal(foo(), (0.7, 1.2))
 
 def test_stage_overrides_default_with_options():
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
     ex1.options["alpha"] = 0.7
     ex1.options["beta"] = 1.2
 
@@ -109,7 +119,7 @@ def test_stage_overrides_default_with_options():
     assert_equal(foo(), (0.7, 1.2))
 
 def test_stage_keeps_explicit_arguments():
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
     ex1.options["alpha"] = 0.7
     ex1.options["beta"] = 1.2
 
@@ -121,7 +131,7 @@ def test_stage_keeps_explicit_arguments():
 
 @raises(TypeError)
 def test_stage_with_unexpected_kwarg_raises_TypeError():
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
 
     @ex1.stage
     def foo(): pass
@@ -131,7 +141,7 @@ def test_stage_with_unexpected_kwarg_raises_TypeError():
 
 @raises(TypeError)
 def test_stage_with_duplicate_arguments_raises_TypeError():
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
 
     @ex1.stage
     def foo(a): pass
@@ -141,7 +151,7 @@ def test_stage_with_duplicate_arguments_raises_TypeError():
 
 @raises(TypeError)
 def test_stage_with_missing_arguments_raises_TypeError():
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
     ex1.options["b"]=1
     @ex1.stage
     def foo(a, b, c, d=5): pass
@@ -159,7 +169,7 @@ def test_experiment_reads_options_from_file():
         d={'a' : 1, 'b' : 2}
         """)
         f.flush()
-        ex1 = Experiment(f.name)
+        ex1 = createExperiment(config_file=f.name)
         assert_true("foo" in ex1.options)
         assert_equal(ex1.options['foo'], 1)
         assert_true("bar" in ex1.options)
@@ -172,7 +182,7 @@ def test_experiment_reads_options_from_file():
         assert_equal(ex1.options['d'], {'a' : 1, 'b' : 2})
 
 def test_experiment_generates_seed():
-    ex1 = Experiment()
+    ex1 = create_basic_Experiment()
     assert_true(type(ex1.seed) is int )
 
 def test_experiment_reads_seed_from_file():
@@ -181,21 +191,18 @@ def test_experiment_reads_seed_from_file():
         seed=12345
         """)
         f.flush()
-        ex1 = Experiment(f.name)
+        ex1 = createExperiment(config_file=f.name)
         assert_equal(ex1.seed, 12345)
 
-def test_experiment_takes_seed_as_kwarg():
-    ex1 = Experiment(seed=12345)
-    assert_equal(ex1.seed, 12345)
 
 def test_fill_args_seeds_deterministic():
-    ex1 = Experiment(seed=12345)
+    ex1 = create_basic_Experiment(seed=12345)
     @ex1.stage
     def foo(rnd):
         return rnd.randint(10000)
     r1 = foo()
 
-    ex1 = Experiment(seed=12345)
+    ex1 = create_basic_Experiment(seed=12345)
     @ex1.stage
     def foo(rnd):
         return rnd.randint(10000)
@@ -204,7 +211,7 @@ def test_fill_args_seeds_deterministic():
     assert_equal(r1, r2)
 
 def test_repeated_fill_args_are_seeded_differently():
-    ex1 = Experiment(seed=12345)
+    ex1 = create_basic_Experiment(seed=12345)
     @ex1.stage
     def foo(rnd):
         return rnd.randint(10000)

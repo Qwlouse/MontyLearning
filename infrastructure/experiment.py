@@ -5,15 +5,22 @@ The amazing Experiment class i dreamt up recently.
 It should be a kind of ML-Experiment-build-system-checkpointer-...
 TODO:
  R create Factory for experiments and make constructor simple
- - write report that is readable by humans and this package
+
+ - make caching key independent of comments and docstring of the stage
  T Test auto-caching
+
+ - write report that is readable by humans and this package
+
  ! automatic repetition of a stage with mean and var of the result
+
  - Main should support parameters, loggers, (rnd), many-runs
  - main should also parse command line arguments
+
  - find out if current file is git-controlled and if it is checked in, warn otherwise
  - write commit hash to report
  ! automatize rerunning an experiment by checking out the appropriate version and feed the parameters
  ? gather versions of dependencies
+
  V figure out how to incorporate plots
 """
 
@@ -27,9 +34,9 @@ import time
 import os
 from StringIO import StringIO
 from infrastructure.caches import CacheStub
-from infrastructure.function_helpers import assert_no_duplicate_args, assert_no_unexpected_kwargs, assert_no_missing_args, apply_options
+from infrastructure.function_helpers import *
 
-__all__ = ['Experiment']
+__all__ = ['Experiment', 'createExperiment']
 
 RANDOM_SEED_RANGE = 0, 1000000
 
@@ -89,55 +96,56 @@ class StageFunction(object):
         return hash(self.source)
 
 
+def createExperiment(name = "Experiment", config_file=None, config_string=None, logger=None, seed=None, cache=None):
+    # setup logging
+    if logger is None:
+        logger = logging.getLogger(name)
+        logger.setLevel(logging.INFO)
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(levelname)s - %(name)s - %(message)s')
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+        logger.info("No Logger configured: Using generic stdout Logger")
+
+    # reading configuration
+    options = ConfigObj(unrepr=True)
+    if config_file is not None:
+        if isinstance(config_file, basestring) :
+            logger.info("Loading config file {}".format(config_file))
+            options = ConfigObj(config_file, unrepr=True, encoding="UTF-8")
+        elif hasattr(config_file, 'read'):
+            logger.info("Reading configuration from file.")
+            options = ConfigObj(config_file, unrepr=True, encoding="UTF-8")
+    elif config_string is not None:
+        logger.info("Reading configuration from string.")
+        options = ConfigObj(StringIO(str(config_string)), unrepr=True, encoding="UTF8")
+
+    # get seed for random numbers in experiment
+    if seed is None:
+        if 'seed' in options:
+            seed = options['seed']
+        else:
+            seed = np.random.randint(*RANDOM_SEED_RANGE)
+            logger.warn("No Seed given. Using seed={}. Set in config "
+                        "file to repeat experiment".format(seed))
+
+    cache = cache or CacheStub()
+
+    return Experiment(name, logger, options, seed, cache)
+
+
 class Experiment(object):
-    def __init__(self, config=None, cache=None, seed=None, logger=None):
-        self.setup_logging(logger)
-
-        # load options from config
-        if isinstance(config, basestring) :
-            if os.path.exists(config):
-                self.logger.info("Loading config file {}".format(config))
-                self.options = ConfigObj(config, unrepr=True, encoding="UTF-8")
-            else :
-                self.logger.info("Reading configuration from string.")
-                self.options = ConfigObj(StringIO(str(config)), unrepr=True, encoding="UTF8")
-        elif hasattr(config, 'read'):
-            self.logger.info("Reading configuration from file.")
-            self.options = ConfigObj(config.split('\n'))
-        else:
-            self.options = ConfigObj(unrepr=True)
-
-        # get seed for random numbers in experiment
-        if seed is not None:
-            self.seed = seed
-        elif 'seed' in self.options:
-            self.seed = self.options['seed']
-        else:
-            self.seed = np.random.randint(*RANDOM_SEED_RANGE)
-            self.logger.warn("No Seed given. Using seed={}. Set in config "
-                             "file to repeat experiment".format(self.seed))
+    def __init__(self, name, logger, options, seed, cache):
+        self.name = name
+        self.logger = logger
+        self.options = options
+        self.seed = seed
         self.prng = np.random.RandomState(self.seed)
+        self.cache = cache
 
         # init stages
         self.stages = OrderedDict()
-        self.cache = cache or CacheStub()
-
-    def setup_logging(self, logger):
-        # setup logging
-        if logger is not None:
-            self.logger = logger
-        else :
-            self.logger = logging.getLogger("Experiment")
-            self.logger.setLevel(logging.INFO)
-            ch = logging.StreamHandler()
-            ch.setLevel(logging.INFO)
-            formatter = logging.Formatter('%(levelname)s - %(name)s - %(message)s')
-            ch.setFormatter(formatter)
-            # add ch to logger
-            self.logger.addHandler(ch)
-
-            self.logger.info("No Logger configured: Using generic Experiment Logger")
-
 
     def stage(self, f):
         """

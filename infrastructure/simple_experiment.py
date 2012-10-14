@@ -14,11 +14,11 @@ bias = 1
 from __future__ import division, print_function, unicode_literals
 import numpy as np
 import time
-from experiment import Experiment
+from experiment import Experiment, createExperiment
 from infrastructure.caches import ShelveCache
 
 
-ex = Experiment( __doc__, cache=ShelveCache("experiment.shelve"))
+ex = createExperiment( config_string=__doc__, cache=ShelveCache("experiment.shelve"))
 
 @ex.stage
 def create_data(n, m, bias, logger):
