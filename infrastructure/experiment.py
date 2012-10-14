@@ -4,8 +4,9 @@
 The amazing Experiment class i dreamt up recently.
 It should be a kind of ML-Experiment-build-system-checkpointer-...
 TODO:
+ R create Factory for experiments and make constructor simple
  - write report that is readable by humans and this package
- ! Test auto-caching
+ T Test auto-caching
  ! automatic repetition of a stage with mean and var of the result
  - Main should support parameters, loggers, (rnd), many-runs
  - main should also parse command line arguments
@@ -13,7 +14,7 @@ TODO:
  - write commit hash to report
  ! automatize rerunning an experiment by checking out the appropriate version and feed the parameters
  ? gather versions of dependencies
- - figure out how to incorporate plots
+ V figure out how to incorporate plots
 """
 
 from __future__ import division, print_function, unicode_literals
@@ -26,22 +27,11 @@ import time
 import os
 from StringIO import StringIO
 from infrastructure.caches import CacheStub
+from infrastructure.function_helpers import assert_no_duplicate_args, assert_no_unexpected_kwargs, assert_no_missing_args, apply_options
 
 __all__ = ['Experiment']
 
 RANDOM_SEED_RANGE = 0, 1000000
-
-
-def get_signature(f):
-    args, varargs_name, kw_wildcard_name, defaults = inspect.getargspec(f)
-    defaults = defaults or []
-    pos_args = args[:len(args)-len(defaults)]
-    kwargs = dict(zip(args[-len(defaults):], defaults))
-    return {'args' : args,
-            'positional' : pos_args,
-            'kwargs' : kwargs,
-            'varargs_name' : varargs_name,
-            'kw_wildcard_name' : kw_wildcard_name}
 
 class StageFunction(object):
     def __init__(self, name, f, cache, options, logger, seed):
@@ -59,45 +49,8 @@ class StageFunction(object):
         self.signature = get_signature(f)
         # some configuration
         self.caching_threshold = 2 # seconds
-
-    def apply_options(self, args, kwargs, options):
-        """
-        For a given function f and the *args and **kwargs it was called with,
-        construct a new dictionary of arguments such that:
-          - the original explicit call arguments are preserved
-          - missing arguments are filled in by name using options (if possible)
-          - default arguments are overridden by options
-          - sensible errors are thrown if:
-            * you pass an unexpected keyword argument
-            * you provide multiple values for an argument
-            * after all the filling an argument is still missing
-        """
-        arguments = dict()
-        arguments.update(self.signature['kwargs']) # weakest: default arguments:
-        arguments.update((v, options[v]) for v in self.signature['args'] if v in options) # options
-        arguments.update(kwargs) # keyword arguments
-        positional_arguments = dict(zip(self.signature['positional'], args))
-        arguments.update(positional_arguments) # strongest: positional arguments
-        return arguments
-
-    def assert_no_missing_args(self, arguments):
-        # check if after all some arguments are still missing
-        missing_arguments = [v for v in self.signature['args'] if v not in arguments]
-        if missing_arguments :
-            raise TypeError("{}() is missing value(s) for {}".format(self.__name__, missing_arguments))
-
-    def assert_no_unexpected_kwargs(self, kwargs):
-        # check for erroneous kwargs
-        wrong_kwargs = [v for v in kwargs if v not in self.signature['args']]
-        if wrong_kwargs :
-            raise TypeError("{}() got unexpected keyword argument(s): {}".format(self.__name__, wrong_kwargs))
-
-    def assert_no_duplicate_args(self, args, kwargs):
-        #check for multiple explicit arguments
-        positional_arguments = self.signature['positional'][:len(args)]
-        duplicate_arguments = [v for v in positional_arguments if v in kwargs]
-        if duplicate_arguments :
-            raise TypeError("{}() got multiple values for argument(s) {}".format(self.__name__, duplicate_arguments))
+        # internal state
+        self.execution_time = None
 
     def add_random_arg_to(self, arguments):
         if 'rnd' in self.signature['args']  and 'rnd' not in arguments:
@@ -109,13 +62,13 @@ class StageFunction(object):
 
     def __call__(self, *args, **kwargs):
         # Modify Arguments
-        self.assert_no_unexpected_kwargs(kwargs)
-        self.assert_no_duplicate_args(args, kwargs)
-        arguments = self.apply_options(args, kwargs, self.options)
+        assert_no_unexpected_kwargs(self.signature, kwargs)
+        assert_no_duplicate_args(self.signature, args, kwargs)
+        arguments = apply_options(self.signature, args, kwargs, self.options)
         self.add_random_arg_to(arguments)
         key = (self.source, dict(arguments)) # use arguments without logger as cache-key
         self.add_logger_arg_to(arguments)
-        self.assert_no_missing_args(arguments)
+        assert_no_missing_args(self.signature, arguments)
         # Check for cached version
         try:
             result = self.cache[key]
@@ -124,10 +77,10 @@ class StageFunction(object):
         #### Run the function ####
             start_time = time.time()
             result = self.function(**arguments)
-            duration = time.time() - start_time
-            self.logger.info("Completed Stage '%s' in %2.2f sec"%(self.__name__, duration))
+            self.execution_time = time.time() - start_time
+            self.logger.info("Completed Stage '%s' in %2.2f sec"%(self.__name__, self.execution_time))
         ##########################
-            if duration > self.caching_threshold:
+            if self.execution_time > self.caching_threshold:
                 self.logger.info("Execution took more than %2.2f sec so we cache the result."%self.caching_threshold)
                 self.cache[key] = result
         return result
