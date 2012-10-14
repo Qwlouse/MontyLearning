@@ -5,7 +5,7 @@ The amazing Experiment class i dreamt up recently.
 It should be a kind of ML-Experiment-build-system-checkpointer-...
 TODO:
  - write report that is readable by humans and this package
- - only cache if execution time passes threshold
+ ! Test auto-caching
  ! automatic repetition of a stage with mean and var of the result
  - Main should support parameters, loggers, (rnd), many-runs
  - main should also parse command line arguments
@@ -57,6 +57,8 @@ class StageFunction(object):
         # extract extra info
         self.source = str(inspect.getsource(f))
         self.signature = get_signature(f)
+        # some configuration
+        self.caching_threshold = 2 # seconds
 
     def apply_options(self, args, kwargs, options):
         """
@@ -122,10 +124,12 @@ class StageFunction(object):
         #### Run the function ####
             start_time = time.time()
             result = self.function(**arguments)
-            end_time = time.time()
-            self.logger.info("Completed Stage '%s' in %2.2f sec"%(self.__name__, end_time-start_time))
+            duration = time.time() - start_time
+            self.logger.info("Completed Stage '%s' in %2.2f sec"%(self.__name__, duration))
         ##########################
-            self.cache[key] = result
+            if duration > self.caching_threshold:
+                self.logger.info("Execution took more than %2.2f sec so we cache the result."%self.caching_threshold)
+                self.cache[key] = result
         return result
 
     def __hash__(self):

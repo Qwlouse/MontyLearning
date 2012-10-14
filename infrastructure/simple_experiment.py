@@ -29,6 +29,7 @@ def create_data(n, m, bias, logger):
 @ex.stage
 def square(A, logger):
     logger.info("Squaring {}x{} array.".format(A.shape[0], A.shape[1]))
+    time.sleep(3)
     return A * A
 
 @ex.main
