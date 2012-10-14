@@ -65,19 +65,6 @@ def test_Experiment_keeps_track_of_stages():
     assert_equal(ex1.stages["bar"], bar)
     assert_equal(ex1.stages["baz"], baz)
 
-def test_Experiment_preserves_order_of_stages(): # TODO: Is that necessary?
-    ex1 = create_basic_Experiment()
-
-    @ex1.stage
-    def foo(): pass
-
-    @ex1.stage
-    def bar(): pass
-
-    @ex1.stage
-    def baz(): pass
-
-    assert_equal(ex1.stages.keys(), ["foo", "bar", "baz"])
 
 def test_stage_executes_function():
     ex1 = create_basic_Experiment()

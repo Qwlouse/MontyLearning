@@ -57,13 +57,11 @@ ROADMAP:
 """
 
 from __future__ import division, print_function, unicode_literals
-from collections import OrderedDict # TODO: Check if this is necessary
 from configobj import ConfigObj
 import inspect
 import numpy as np
 import logging
 import time
-import os
 from StringIO import StringIO
 from infrastructure.caches import CacheStub
 from infrastructure.function_helpers import *
@@ -177,7 +175,7 @@ class Experiment(object):
         self.cache = cache
 
         # init stages
-        self.stages = OrderedDict()
+        self.stages = dict()
 
     def stage(self, f):
         """
