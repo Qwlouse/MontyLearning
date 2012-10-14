@@ -212,5 +212,5 @@ def test_repeated_fill_args_are_seeded_differently():
     r1 = foo()
     r2 = foo()
 
-    assert_true(r1 != r2)
+    assert_not_equal(r1, r2)
 

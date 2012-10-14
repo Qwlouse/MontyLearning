@@ -45,11 +45,12 @@ def get_signature(f):
             'kw_wildcard_name' : kw_wildcard_name}
 
 class StageFunction(object):
-    def __init__(self, name, f, experiment, logger, random):
+    def __init__(self, name, f, cache, options, logger, seed):
         self.function = f
-        self.experiment = weakref.proxy(experiment)
         self.logger = logger
-        self.random = random
+        self.random = np.random.RandomState(seed)
+        self.cache = cache
+        self.options = options
         # preserve meta_information
         self.__name__ = name
         self.func_name = name
@@ -109,14 +110,14 @@ class StageFunction(object):
         # Modify Arguments
         self.assert_no_unexpected_kwargs(kwargs)
         self.assert_no_duplicate_args(args, kwargs)
-        arguments = self.apply_options(args, kwargs, self.experiment.options)
+        arguments = self.apply_options(args, kwargs, self.options)
         self.add_random_arg_to(arguments)
         key = (self.source, dict(arguments)) # use arguments without logger as cache-key
         self.add_logger_arg_to(arguments)
         self.assert_no_missing_args(arguments)
         # Check for cached version
         try:
-            result = self.experiment.cache[key]
+            result = self.cache[key]
             self.logger.info("Retrieved '%s' from cache. Skipping Execution"%self.__name__)
         except KeyError:
         #### Run the function ####
@@ -125,7 +126,7 @@ class StageFunction(object):
             end_time = time.time()
             self.logger.info("Completed Stage '%s' in %2.2f sec"%(self.__name__, end_time-start_time))
         ##########################
-            self.experiment.cache[key] = result
+            self.cache[key] = result
         return result
 
     def __hash__(self):
@@ -155,10 +156,23 @@ class ShelveCache(object):
     def sync(self):
         self.shelve.sync()
 
+class NoneDict(object):
+    def __getitem__(self, item):
+        raise KeyError("Key not Found.")
+
+    def __setitem__(self, key, value):
+        pass
+
+    def __delitem__(self, key):
+        pass
+
+    def sync(self):
+        pass
+
 
 
 class Experiment(object):
-    def __init__(self, config=None, seed=None, logger=None):
+    def __init__(self, config=None, cache=None, seed=None, logger=None):
         self.setup_logging(logger)
 
         # load options from config
@@ -188,7 +202,7 @@ class Experiment(object):
 
         # init stages
         self.stages = OrderedDict()
-        self.cache = ShelveCache("experiment.shelve")
+        self.cache = cache or NoneDict()
 
     def setup_logging(self, logger):
         # setup logging
@@ -230,8 +244,8 @@ class Experiment(object):
         else :
             stage_name = f.func_name
             stage_logger = self.logger.getChild(stage_name)
-            stage_random = np.random.RandomState(self.prng.randint(*RANDOM_SEED_RANGE))
-            stage = StageFunction(stage_name, f, self, stage_logger, stage_random)
+            stage_seed = self.prng.randint(*RANDOM_SEED_RANGE)
+            stage = StageFunction(stage_name, f, self.cache, self.options, stage_logger, stage_seed)
             self.stages[stage_name] = stage
             return stage
 
