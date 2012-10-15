@@ -24,6 +24,7 @@ ROADMAP:
  ? maybe even provide means to include other config files?
 
  ### Stage Repetition
+ - count how often a stage was executed and log that
  V automatic repetition of a stage with mean and var of the result
  V make stages easily repeatable with different options
  V make option-sweeps easy
