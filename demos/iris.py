@@ -45,19 +45,24 @@ def epoch_gradient_descent(fann, theta, X, T, learning_rate, logger):
 
 @ex.stage
 def many_epochs_decrease_lr(fann, theta, X, T, learning_rate):
-    errors = []
     err = 1e100
     lr = learning_rate
     for i in range(1, 4000):
         err_new, theta_new = epoch_gradient_descent(fann, theta, X, T, learning_rate=lr)
         if err_new < err :
             theta = theta_new
-            errors.append(err_new)
+            ex.add_result(error=err_new)
         else :
             print("---")
             lr /= 2
         err = err_new
-    return errors
+    return theta
+
+@ex.plot
+def plot_error(results):
+    fig, ax = plt.subplots()
+    ax.plot(results['error'])
+    return fig
 
 
 @ex.main
@@ -65,11 +70,7 @@ def main():
     iris = load_iris()
     T, lb = binarize_labels(iris.target)
     nn, theta = create_neural_network(in_size=iris.data.shape[1], out_size=T.shape[1])
-    errors = many_epochs_decrease_lr(nn, theta, iris.data, T)
-
-    fig, ax = plt.subplots()
-    ax.plot(errors)
-    plt.show()
+    theta = many_epochs_decrease_lr(nn, theta, iris.data, T)
 
 
 

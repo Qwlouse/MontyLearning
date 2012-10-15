@@ -63,6 +63,8 @@ import inspect
 import numpy as np
 import logging
 import time
+from collections import defaultdict
+from matplotlib import pyplot as plt
 from StringIO import StringIO
 from infrastructure.caches import CacheStub
 from infrastructure.function_helpers import *
@@ -174,9 +176,15 @@ class Experiment(object):
         self.seed = seed
         self.prng = np.random.RandomState(self.seed)
         self.cache = cache
+        self.results = defaultdict(list)
 
-        # init stages
         self.stages = dict()
+        self.plots = []
+
+
+    def add_result(self, **kwargs):
+        for k, v in kwargs.items():
+            self.results[k].append(v)
 
     def stage(self, f):
         """
@@ -206,8 +214,16 @@ class Experiment(object):
             self.stages[stage_name] = stage
             return stage
 
+    def plot(self, f):
+        """decorator to generate plots"""
+        self.plots.append(f)
+        return f
+
 
     def main(self, f):
         if f.__module__ == "__main__":
             f()
+        for p in self.plots:
+            p(self.results).show()
+        plt.show()
         return f
