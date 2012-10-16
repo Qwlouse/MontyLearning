@@ -26,6 +26,10 @@ seg_trainval_set_file = path.join(SEGMENTATION_SET_DIR, "trainval.txt")
 BACKGROUND, AEROPLANE, BICYCLE, BIRD, BOAT, BOTTLE, BUS, CAR, CAT, CHAIR, \
 COW, TABLE, DOG, HORSE, MOTORBIKE, PERSON, PLANT, SHEEP, SOFA, TRAIN, TV, VOID = range(22)
 
+CLASS_LIST= ['background', 'aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
+             'bus', 'car', 'cat', 'chair', 'cow', 'table', 'dog', 'horse',
+             'motorbike', 'person', 'plant', 'sheep', 'sofa', 'train', 'tv', 'void']
+
 
 def get_image_paths_for(img_path, set_filename, ending):
     with open(set_filename, "r") as f:
