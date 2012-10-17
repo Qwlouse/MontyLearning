@@ -73,6 +73,22 @@ __all__ = ['Experiment', 'createExperiment']
 
 RANDOM_SEED_RANGE = 0, 1000000
 
+
+LoggerClass = logging.getLoggerClass()
+SET_RESULT_LEVEL = 100
+APPEND_RESULT_LEVEL = 101
+class ExperimentLogger(logging.Logger):
+    def __init__(self, name, level=logging.NOTSET):
+        super(ExperimentLogger, self).__init__(name, level=level)
+
+    def setResult(self, **kwargs):
+        self._log(SET_RESULT_LEVEL, "set result: %(set_dict)s", None, extra={"set_dict" : kwargs})
+
+    def appendResult(self, **kwargs):
+        self._log(APPEND_RESULT_LEVEL, "append result: %(append_dict)s", None, extra= {"append_dict" : kwargs})
+
+logging.setLoggerClass(ExperimentLogger)
+
 class StageFunction(object):
     def __init__(self, name, f, cache, options, logger, seed):
         self.function = f
@@ -111,18 +127,23 @@ class StageFunction(object):
         assert_no_missing_args(self.signature, arguments)
         # Check for cached version
         try:
-            result = self.cache[key]
+            result, result_logs = self.cache[key]
+            self.logger.setResult(**result_logs)
             self.logger.info("Retrieved '%s' from cache. Skipping Execution"%self.__name__)
         except KeyError:
         #### Run the function ####
+            local_results_handler = ResultLogHandler()
+            self.logger.addHandler(local_results_handler)
             start_time = time.time()
             result = self.function(**arguments)
             self.execution_time = time.time() - start_time
             self.logger.info("Completed Stage '%s' in %2.2f sec"%(self.__name__, self.execution_time))
+            result_logs = local_results_handler.results
         ##########################
             if self.execution_time > self.caching_threshold:
                 self.logger.info("Execution took more than %2.2f sec so we cache the result."%self.caching_threshold)
-                self.cache[key] = result
+                self.cache[key] = result, result_logs
+
         return result
 
     def __hash__(self):
@@ -135,6 +156,10 @@ def createExperiment(name = "Experiment", config_file=None, config_string=None, 
         logger = logging.getLogger(name)
         logger.setLevel(logging.INFO)
         ch = logging.StreamHandler()
+        class ResultsLogFilter(object):
+            def filter(self, record):
+                return record.levelno not in [SET_RESULT_LEVEL, APPEND_RESULT_LEVEL]
+        ch.addFilter(ResultsLogFilter())
         ch.setLevel(logging.INFO)
         formatter = logging.Formatter('%(levelname)s - %(name)s - %(message)s')
         ch.setFormatter(formatter)
@@ -167,6 +192,21 @@ def createExperiment(name = "Experiment", config_file=None, config_string=None, 
 
     return Experiment(name, logger, options, seed, cache)
 
+class ResultLogHandler(logging.Handler):
+    def __init__(self, level=logging.NOTSET):
+        super(ResultLogHandler, self).__init__(level=level)
+        self.results = defaultdict(list)
+
+    def filter(self, record):
+        return record.levelno in [SET_RESULT_LEVEL, APPEND_RESULT_LEVEL]
+
+    def handle(self, record):
+        if record.levelno == SET_RESULT_LEVEL:
+            self.results.update(record.set_dict)
+        elif record.levelno == APPEND_RESULT_LEVEL:
+            for k, v in record.append_dict.items():
+                self.results[k].append(v)
+
 
 class Experiment(object):
     def __init__(self, name, logger, options, seed, cache):
@@ -176,15 +216,11 @@ class Experiment(object):
         self.seed = seed
         self.prng = np.random.RandomState(self.seed)
         self.cache = cache
-        self.results = defaultdict(list)
-
+        self.results_handler = ResultLogHandler()
+        self.logger.addHandler(self.results_handler)
         self.stages = dict()
         self.plots = []
 
-
-    def add_result(self, **kwargs):
-        for k, v in kwargs.items():
-            self.results[k].append(v)
 
     def stage(self, f):
         """
@@ -224,6 +260,6 @@ class Experiment(object):
         if f.__module__ == "__main__":
             f()
         for p in self.plots:
-            p(self.results).show()
+            p(self.results_handler.results).show()
         plt.show()
         return f

@@ -2,7 +2,7 @@
 # coding=utf-8
 """
 # config for iris demo
-seed = 812590
+seed = 812590 #good
 hidden_size = 5
 learning_rate = 0.1
 
@@ -35,23 +35,22 @@ def create_neural_network(in_size, hidden_size, out_size, rnd, logger):
     theta = rnd.randn(nn.get_param_dim())
     return nn, theta
 
-@ex.stage
-def epoch_gradient_descent(fann, theta, X, T, learning_rate, logger):
+#@ex.stage
+def epoch_gradient_descent(fann, theta, X, T, learning_rate):
     grad = fann.calculate_gradient(theta, X, T)
     theta_new = theta - grad * learning_rate
     err = fann.calculate_error(theta_new, X, T)
-    logger.info("Error: {}".format(err))
     return err, theta_new
 
 @ex.stage
-def many_epochs_decrease_lr(fann, theta, X, T, learning_rate):
+def many_epochs_decrease_lr(fann, theta, X, T, learning_rate, logger):
     err = 1e100
     lr = learning_rate
     for i in range(1, 4000):
         err_new, theta_new = epoch_gradient_descent(fann, theta, X, T, learning_rate=lr)
         if err_new < err :
             theta = theta_new
-            ex.add_result(error=err_new)
+            logger.appendResult(error=err_new)
         else :
             print("---")
             lr /= 2
