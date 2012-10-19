@@ -6,6 +6,13 @@ seed = 812590 #good
 hidden_size = 5
 learning_rate = 0.1
 
+[small]
+hidden_size = 1
+
+[big]
+hidden_size = 10
+
+
 """
 from __future__ import division, print_function, unicode_literals
 from infrastructure.caches import ShelveCache
@@ -68,7 +75,9 @@ def plot_error(results):
 def main():
     iris = load_iris()
     T, lb = binarize_labels(iris.target)
-    nn, theta = create_neural_network(in_size=iris.data.shape[1], out_size=T.shape[1])
+    with ex.optionset("big") as o:
+        nn, theta = o.create_neural_network(in_size=iris.data.shape[1], out_size=T.shape[1])
+
     theta = many_epochs_decrease_lr(nn, theta, iris.data, T)
 
 

@@ -59,6 +59,7 @@ ROADMAP:
 
 from __future__ import division, print_function, unicode_literals
 from configobj import ConfigObj
+from copy import copy
 import inspect
 import numpy as np
 import logging
@@ -116,11 +117,11 @@ class StageFunction(object):
         if 'logger' in self.signature['args']:
             arguments['logger'] = self.logger
 
-    def __call__(self, *args, **kwargs):
+    def execute_function(self, args, kwargs, options):
         # Modify Arguments
         assert_no_unexpected_kwargs(self.signature, kwargs)
         assert_no_duplicate_args(self.signature, args, kwargs)
-        arguments = apply_options(self.signature, args, kwargs, self.options)
+        arguments = apply_options(self.signature, args, kwargs, options)
         self.add_random_arg_to(arguments)
         key = (self.source, dict(arguments)) # use arguments without logger as cache-key
         self.add_logger_arg_to(arguments)
@@ -139,15 +140,26 @@ class StageFunction(object):
             self.execution_time = time.time() - start_time
             self.logger.info("Completed Stage '%s' in %2.2f sec"%(self.__name__, self.execution_time))
             result_logs = local_results_handler.results
-        ##########################
+            ##########################
             if self.execution_time > self.caching_threshold:
                 self.logger.info("Execution took more than %2.2f sec so we cache the result."%self.caching_threshold)
                 self.cache[key] = result, result_logs
-
         return result
+
+    def __call__(self, *args, **kwargs):
+        return self.execute_function(args, kwargs, self.options)
 
     def __hash__(self):
         return hash(self.source)
+
+
+class StageFunctionOptionsView(object):
+    def __init__(self, stage_func, options):
+        self.options = options
+        self.func = stage_func
+
+    def __call__(self, *args, **kwargs):
+        return self.func.execute_function(args, kwargs, self.options)
 
 
 def createExperiment(name = "Experiment", config_file=None, config_string=None, logger=None, seed=None, cache=None):
@@ -207,6 +219,19 @@ class ResultLogHandler(logging.Handler):
             for k, v in record.append_dict.items():
                 self.results[k].append(v)
 
+class OptionContext(object):
+    def __init__(self, options, stage_functions):
+        self.options = options
+        for sf in stage_functions:
+            sf_view = StageFunctionOptionsView(sf, options)
+            self.__setattr__(sf.func_name, sf_view)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
 
 class Experiment(object):
     def __init__(self, name, logger, options, seed, cache):
@@ -220,6 +245,11 @@ class Experiment(object):
         self.logger.addHandler(self.results_handler)
         self.stages = dict()
         self.plots = []
+
+    def optionset(self, section_name):
+        options = copy(self.options)
+        options.update(self.options[section_name])
+        return OptionContext(options, self.stages.values())
 
 
     def stage(self, f):
