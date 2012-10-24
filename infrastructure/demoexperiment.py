@@ -12,14 +12,13 @@ learning_rate = 0.01
 
 """
 from __future__ import division, print_function, unicode_literals
-import numpy as np
-from experiment import Experiment
+from mlizard.experiment import createExperiment
 from neural_nets.connections import FullConnectionWithBias, SigmoidLayer
 from neural_nets.fann import FANN
 from datasets import load_iris
 from sklearn.preprocessing import LabelBinarizer
 
-ex = Experiment(__doc__)
+ex = createExperiment("demo", config_string=__doc__)
 
 @ex.stage
 def binarize_labels(y):

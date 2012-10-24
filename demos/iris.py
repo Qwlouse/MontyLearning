@@ -2,7 +2,7 @@
 # coding=utf-8
 """
 # config for iris demo
-seed = 812590 #good
+#seed = 812590 #good
 hidden_size = 5
 learning_rate = 0.1
 
@@ -15,8 +15,8 @@ hidden_size = 10
 
 """
 from __future__ import division, print_function, unicode_literals
-from infrastructure.caches import ShelveCache
-from infrastructure.experiment import createExperiment
+from mlizard.caches import ShelveCache
+from mlizard.experiment import createExperiment
 from datasets import load_iris
 from sklearn.preprocessing import LabelBinarizer
 from neural_nets.connections import FullConnectionWithBias, SigmoidLayer
@@ -53,11 +53,11 @@ def epoch_gradient_descent(fann, theta, X, T, learning_rate):
 def many_epochs_decrease_lr(fann, theta, X, T, learning_rate, logger):
     err = 1e100
     lr = learning_rate
-    for i in range(1, 4000):
+    for i in range(1, 6000):
         err_new, theta_new = epoch_gradient_descent(fann, theta, X, T, learning_rate=lr)
         if err_new < err :
             theta = theta_new
-            logger.appendResult(error=err_new)
+            logger.append_result(error=err_new)
         else :
             print("---")
             lr /= 2
