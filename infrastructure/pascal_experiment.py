@@ -8,48 +8,36 @@ x_pad = 100
 y_pad = 100
 z_pad = 0
 
-# Image manipulation
-resize_factor = 0.5
-image_resize_mode = "bilinear"
-label_resize_mode = "nearest"
-
 # Subset
 subset = "train"
 allowed_classes = ['background', 'person', 'void']
 
-# Padding
-x_pad = 100
-y_pad = 100
-z_pad = 0
 
 # Image manipulation
 resize_factor = 0.5
 
-# Subset
-subset = "train"
-allowed_classes = ['background', 'person', 'void']
 
 [color]
     pad_mode = "reflect"
     resize_mode = "bilinear"
-    filename = "seg_person_only-color-{set}-p{x_pad}x{y_pad}x{z_pad}-imageset.idx"
-    grayscale = True
+    filename = "seg_person_only-color-{subset}-p{x_pad}x{y_pad}x{z_pad}-imageset.idx"
+    grayscale = False
 
 [gray]
     pad_mode = "reflect"
     resize_mode = "bilinear"
-    filename = "seg_person_only-gray-{set}-p{x_pad}x{y_pad}x{z_pad}-imageset.idx"
-    grayscale = False
+    filename = "seg_person_only-gray-{subset}-p{x_pad}x{y_pad}x{z_pad}-imageset.idx"
+    grayscale = True
 
 [label]
     pad_mode = "constant"
     pad_fill = 255
     resize_mode = "nearest"
     grayscale = True
-    filename = "seg_person_only-{set}-p{x_pad}x{y_pad}x{z_pad}-labels.idx"
-
+    filename = "seg_person_only-{subset}-p{x_pad}x{y_pad}x{z_pad}-labels.idx"
 """
 from __future__ import division, print_function, unicode_literals
+
 import numpy as np
 from scipy.misc import imresize
 import datasets.pascal as pc
@@ -70,7 +58,7 @@ def get_label_path_list(subset):
                  'val'   : pc.get_seg_val_class_label_files,
                  'all'   : pc.get_seg_trainval_class_label_files}[subset]())
 
-get_classes_matrix = ex.full_stage(pc.get_classes_matrix)
+get_classes_matrix = ex.stage(pc.get_classes_matrix)
 
 @ex.stage
 def get_data_subset(image_paths, classes, allowed_classes, subset, logger):
@@ -90,12 +78,15 @@ def load_and_resize_images(img_paths, resize_factor, resize_mode, grayscale, log
     return small_images
 
 @ex.stage
-def pad_images_and_equalize_sizes(images, x_pad, y_pad, z_pad, pad_mode, pad_fill=0):
+def pad_images_and_equalize_sizes(images, x_pad, y_pad, z_pad, pad_mode, pad_fill=None):
     if len(images[0].shape) == 3:
         pad_width = (y_pad, x_pad, z_pad)
     else:
         pad_width = (y_pad, x_pad)
-    return pc.pad_images_and_equalize_sizes(images, pad_width, pad_mode, constant_value=pad_fill)
+    if pad_fill is not None:
+        return pc.pad_images_and_equalize_sizes(images, pad_width, pad_mode, constant_values=pad_fill)
+    else:
+        return pc.pad_images_and_equalize_sizes(images, pad_width, pad_mode)
 
 @ex.stage
 def reshape_images(images):
@@ -110,8 +101,8 @@ def reshape_images(images):
     return out_array
 
 
-
-def main(img_pad_mode, label_pad_mode):
+@ex.main
+def main():
     image_paths = get_image_path_list()
     label_paths = get_label_path_list()
     classes = get_classes_matrix(label_paths)
@@ -123,7 +114,7 @@ def main(img_pad_mode, label_pad_mode):
     images = {}
     for t, p in paths.items():
         with ex.optionset(t) as o:
-            images= load_and_resize_images(p)
-            images= pad_images_and_equalize_sizes(images)
-            images[t]=reshape_images(images)
-            write_idx_file(o.options['filename'].format(**o.options), images[t])
+            images= o.load_and_resize_images(p)
+            images= o.pad_images_and_equalize_sizes(images)
+            images=o.reshape_images(images)
+            write_idx_file(o.options['filename'].format(**o.options), images)
