@@ -64,12 +64,21 @@ def many_epochs_decrease_lr(fann, theta, X, T, learning_rate, logger):
         err = err_new
     return theta
 
-@ex.plot
+#@ex.plot
 def plot_error(results):
     fig, ax = plt.subplots()
     ax.plot(results['error'])
     return fig
 
+def live_plot():
+    figure, axes = plt.subplots()
+    while True:
+        results = yield figure
+        axes.clear()
+        axes.plot(results['error'])
+
+
+ex.results_handler.add_plot(live_plot)
 
 @ex.main
 def main():
