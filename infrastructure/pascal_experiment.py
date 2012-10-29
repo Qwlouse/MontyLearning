@@ -15,7 +15,7 @@ allowed_classes = ['background', 'person', 'void']
 
 # Image manipulation
 resize_factor = 0.5
-
+swappedaxis = True
 
 [color]
     pad_mode = "reflect"
@@ -27,7 +27,7 @@ resize_factor = 0.5
     pad_mode = "reflect"
     resize_mode = "bilinear"
     filename = "seg_person_only-gray-{subset}-p{x_pad}x{y_pad}x{z_pad}-imageset.idx"
-    grayscale = True
+    grayscale = False
 
 [label]
     pad_mode = "constant"
@@ -41,8 +41,9 @@ from __future__ import division, print_function, unicode_literals
 import numpy as np
 from scipy.misc import imresize
 import datasets.pascal as pc
-from mlizard.experiment import createExperiment
+from mlizard import createExperiment
 from infrastructure.idxconverter import write_idx_file
+import matplotlib.pyplot as plt
 
 ex = createExperiment(config_string=__doc__)
 
@@ -74,31 +75,50 @@ def load_and_resize_images(img_paths, resize_factor, resize_mode, grayscale, log
     logger.info("Resizing the images by {}".format(resize_factor))
     images= pc.load_images_as_ndarrays(img_paths, grayscale=grayscale)
     small_images = map(lambda x : imresize(x, resize_factor, interp=resize_mode), images)
-    # TODO swap axis for color?
+    # ensure 3d with (height, width, channels)
+    for i in range(len(small_images)):
+        if len(small_images[i].shape) < 3:
+            height, width = small_images[i].shape
+            small_images[i] = small_images[i].reshape(height, width, 1)
+    # swap axis
+    for i in range(len(small_images)):
+        small_images[i] = np.swapaxes(small_images[i], 1, 2)
+        small_images[i] = np.swapaxes(small_images[i], 0, 1)
     return small_images
 
 @ex.stage
-def pad_images_and_equalize_sizes(images, x_pad, y_pad, z_pad, pad_mode, pad_fill=None):
-    if len(images[0].shape) == 3:
-        pad_width = (y_pad, x_pad, z_pad)
-    else:
-        pad_width = (y_pad, x_pad)
-    if pad_fill is not None:
-        return pc.pad_images_and_equalize_sizes(images, pad_width, pad_mode, constant_values=pad_fill)
-    else:
-        return pc.pad_images_and_equalize_sizes(images, pad_width, pad_mode)
+def pad_images_and_equalize_sizes(images, x_pad, y_pad, pad_mode, pad_fill=None):
+    pad_width = (y_pad, x_pad)
+    kwargs = {'constant_values' : pad_fill} if pad_fill is not None else {}
+    return pc.pad_images_and_equalize_sizes_swapped(images, pad_width, pad_mode, **kwargs)
+
 
 @ex.stage
 def reshape_images(images):
     i1 = images.shape[0]    # nr images
     i2 = 1                  # stack size
-    #i3 = 3                  # channels
-    i4 = images.shape[1]    # y
-    i5 = images.shape[2]    # x
-    out_array = images.reshape(i1, i2, i4, i5, -1)
-    out_array = np.swapaxes(out_array, 3, 4)
-    out_array = np.swapaxes(out_array, 2, 3)
+    i3 = images.shape[1]   # channels
+    i4 = images.shape[2]    # y
+    i5 = images.shape[3]    # x
+    out_array = images.reshape(i1, i2, i3, i4, i5)
     return out_array
+
+@ex.stage
+def create_samples(labels_array, logger):
+    classes = np.unique(labels_array)
+    class_samples = []
+    for c in classes:
+        samples = np.array(np.nonzero(labels_array == c), dtype=np.int32).T
+        N = samples.shape[0]
+        # add class label
+        samples = np.hstack((samples, np.ones((N,1))*c))
+        # reorder to meet idx specs (x, y, z, img_nr, label)
+        samples = samples[:,[3, 2, 1, 0, 4]]
+        class_samples.append(samples)
+        logger.info("Class %d : %d samples", c, N)
+    return class_samples
+
+
 
 
 @ex.main
@@ -111,10 +131,18 @@ def main():
     paths = {'color':image_paths,
              'gray':image_paths,
              'label':label_paths}
-    images = {}
+    # prepare images
+    image_dict = {}
     for t, p in paths.items():
         with ex.optionset(t) as o:
             images= o.load_and_resize_images(p)
             images= o.pad_images_and_equalize_sizes(images)
             images=o.reshape_images(images)
             write_idx_file(o.options['filename'].format(**o.options), images)
+            image_dict[t] = images
+
+
+    # create samples
+    class_samples = create_samples(image_dict['label'])
+
+

@@ -98,3 +98,14 @@ def pad_images_and_equalize_sizes(images, padding=(0, 0, 0), mode="reflect", **k
         images_padded.append(im_padded)
     return np.array(images_padded)
 
+def pad_images_and_equalize_sizes_swapped(images, padding=(0, 0), mode="reflect", **kwargs):
+    images_padded = []
+    max = np.max([im.shape for im in images], axis=0)[1:]
+    for image in images:
+        im_padded = []
+        for im in image: # divide by channels
+            pad_width = [(p, p+e) for p, e in zip(padding, (max - im.shape))]
+            im_padded.append(pad(im, pad_width, mode=str(mode), **kwargs)[np.newaxis,:,:])
+        image_padded = np.vstack(tuple(im_padded))
+        images_padded.append(image_padded)
+    return np.array(images_padded)
