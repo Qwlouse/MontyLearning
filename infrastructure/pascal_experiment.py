@@ -4,37 +4,41 @@
 # I use this demo experiment to find out if experiments are usable
 
 # Padding
-x_pad = 100
-y_pad = 100
+x_pad = 50
+y_pad = 50
 z_pad = 0
 
 # Subset
-subset = "train"
-allowed_classes = ['background', 'person', 'void']
-
+subset = "val"
+#allowed_classes = ['background', 'person', 'void']
+allowed_classes = ['background', 'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'table', 'dog', 'horse', 'motorbike', 'person', 'plant', 'sheep', 'sofa', 'train', 'tv', 'void']
+#prefix = "seg_person_only"
+prefix = "seg_small"
 
 # Image manipulation
-resize_factor = 0.5
-swappedaxis = True
+resize_factor = 0.3333333333333
+
+# samples_stuff
+all_samples_filename = "{prefix}-{subset}-p{x_pad}x{y_pad}x{z_pad}-all_samples.idx"
 
 [color]
     pad_mode = "reflect"
     resize_mode = "bilinear"
-    filename = "seg_person_only-color-{subset}-p{x_pad}x{y_pad}x{z_pad}-imageset.idx"
+    filename = "{prefix}-color-{subset}-p{x_pad}x{y_pad}x{z_pad}-imageset.idx"
     grayscale = False
 
 [gray]
     pad_mode = "reflect"
     resize_mode = "bilinear"
-    filename = "seg_person_only-gray-{subset}-p{x_pad}x{y_pad}x{z_pad}-imageset.idx"
-    grayscale = False
+    filename = "{prefix}-gray-{subset}-p{x_pad}x{y_pad}x{z_pad}-imageset.idx"
+    grayscale = True
 
 [label]
     pad_mode = "constant"
     pad_fill = 255
     resize_mode = "nearest"
-    grayscale = True
-    filename = "seg_person_only-{subset}-p{x_pad}x{y_pad}x{z_pad}-labels.idx"
+    grayscale = False
+    filename = "{prefix}-{subset}-p{x_pad}x{y_pad}x{z_pad}-labels.idx"
 """
 from __future__ import division, print_function, unicode_literals
 
@@ -43,7 +47,6 @@ from scipy.misc import imresize
 import datasets.pascal as pc
 from mlizard import createExperiment
 from infrastructure.idxconverter import write_idx_file
-import matplotlib.pyplot as plt
 
 ex = createExperiment(config_string=__doc__)
 
@@ -104,21 +107,25 @@ def reshape_images(images):
     return out_array
 
 @ex.stage
-def create_samples(labels_array, logger):
+def create_samples(labels_array, logger, void_class=255):
     classes = np.unique(labels_array)
+    classes = classes[classes != void_class] # remove void-class
     class_samples = []
     for c in classes:
         samples = np.array(np.nonzero(labels_array == c), dtype=np.int32).T
         N = samples.shape[0]
         # add class label
-        samples = np.hstack((samples, np.ones((N,1))*c))
+        samples = np.hstack((samples, np.ones((N,1), dtype=np.int32)*c))
         # reorder to meet idx specs (x, y, z, img_nr, label)
-        samples = samples[:,[3, 2, 1, 0, 4]]
+        samples = samples[:,[4, 3, 2, 0, 5]]
         class_samples.append(samples)
         logger.info("Class %d : %d samples", c, N)
     return class_samples
 
-
+@ex.stage
+def write_samples_to_idx(samples, filename):
+    np.random.shuffle(samples)
+    write_idx_file(filename, samples, byteswap=False)
 
 
 @ex.main
@@ -129,7 +136,7 @@ def main():
     image_paths = get_data_subset(image_paths, classes)
     label_paths = get_data_subset(label_paths, classes)
     paths = {'color':image_paths,
-             'gray':image_paths,
+             'gray' :image_paths,
              'label':label_paths}
     # prepare images
     image_dict = {}
@@ -144,5 +151,6 @@ def main():
 
     # create samples
     class_samples = create_samples(image_dict['label'])
+    write_samples_to_idx(np.vstack(tuple(class_samples)), ex.options['all_samples_filename'].format(**ex.options))
 
 
