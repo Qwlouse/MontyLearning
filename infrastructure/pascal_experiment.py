@@ -13,32 +13,36 @@ subset = "val"
 #allowed_classes = ['background', 'person', 'void']
 allowed_classes = ['background', 'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'table', 'dog', 'horse', 'motorbike', 'person', 'plant', 'sheep', 'sofa', 'train', 'tv', 'void']
 #prefix = "seg_person_only"
-prefix = "seg_small"
+prefix = "seg_167x167"
+#prefix = "seg_250x250"
 
 # Image manipulation
-resize_factor = 0.3333333333333
+resize_factor = 0.3333333333333333
 
 # samples_stuff
-all_samples_filename = "{prefix}-{subset}-p{x_pad}x{y_pad}x{z_pad}-all_samples.idx"
+all_samples_filename = "{prefix}_{subset}-p{x_pad}x{y_pad}x{z_pad}-1M_background_samples.idx"
 
 [color]
     pad_mode = "reflect"
-    resize_mode = "bilinear"
-    filename = "{prefix}-color-{subset}-p{x_pad}x{y_pad}x{z_pad}-imageset.idx"
+    resize_mode = "bicubic"
+    filename = "{prefix}_color_{subset}-p{x_pad}x{y_pad}x{z_pad}-imagedata.idx"
     grayscale = False
+    use_channel_dim = True
 
 [gray]
     pad_mode = "reflect"
-    resize_mode = "bilinear"
-    filename = "{prefix}-gray-{subset}-p{x_pad}x{y_pad}x{z_pad}-imageset.idx"
+    resize_mode = "bicubic"
+    filename = "{prefix}_grayscale_{subset}-p{x_pad}x{y_pad}x{z_pad}-imagedata.idx"
     grayscale = True
+    use_channel_dim = True
 
 [label]
     pad_mode = "constant"
     pad_fill = 255
     resize_mode = "nearest"
     grayscale = False
-    filename = "{prefix}-{subset}-p{x_pad}x{y_pad}x{z_pad}-labels.idx"
+    filename = "{prefix}_{subset}-p{x_pad}x{y_pad}x{z_pad}-labeldata.idx"
+    use_channel_dim = False
 """
 from __future__ import division, print_function, unicode_literals
 
@@ -47,7 +51,6 @@ from scipy.misc import imresize
 import datasets.pascal as pc
 from mlizard import createExperiment
 from infrastructure.idxconverter import write_idx_file
-
 ex = createExperiment(config_string=__doc__)
 
 @ex.stage
@@ -97,13 +100,16 @@ def pad_images_and_equalize_sizes(images, x_pad, y_pad, pad_mode, pad_fill=None)
 
 
 @ex.stage
-def reshape_images(images):
+def reshape_images(images, use_channel_dim):
     i1 = images.shape[0]    # nr images
     i2 = 1                  # stack size
     i3 = images.shape[1]   # channels
     i4 = images.shape[2]    # y
     i5 = images.shape[3]    # x
-    out_array = images.reshape(i1, i2, i3, i4, i5)
+    if use_channel_dim:
+        out_array = images.reshape(i1, i2, i3, i4, i5)
+    else :
+        out_array = images.reshape(i1, i2, i4, i5)
     return out_array
 
 @ex.stage
@@ -117,7 +123,7 @@ def create_samples(labels_array, logger, void_class=255):
         # add class label
         samples = np.hstack((samples, np.ones((N,1), dtype=np.int32)*c))
         # reorder to meet idx specs (x, y, z, img_nr, label)
-        samples = samples[:,[4, 3, 2, 0, 5]]
+        samples = samples[:,[3, 2, 1, 0, 4]]
         class_samples.append(samples)
         logger.info("Class %d : %d samples", c, N)
     return class_samples
@@ -151,6 +157,9 @@ def main():
 
     # create samples
     class_samples = create_samples(image_dict['label'])
+    # reduce number of background samples
+    np.random.shuffle(class_samples[0])
+    class_samples[0] = class_samples[0][:1000000]
     write_samples_to_idx(np.vstack(tuple(class_samples)), ex.options['all_samples_filename'].format(**ex.options))
 
 
