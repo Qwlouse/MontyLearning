@@ -38,3 +38,20 @@ class LinearCombination(object):
         grad = X.T.dot(out_error).flatten()
         in_error = out_error.dot(W.T)
         return in_error, grad
+
+
+class Sigmoid(object):
+    def __init__(self, input_dim, output_dim):
+        if input_dim != output_dim:
+            raise ValueError("Input and output dimensions must match!")
+        self.input_dim = input_dim
+        self.output_dim = input_dim
+
+    def get_param_dim(self):
+        return 0
+
+    def forward_pass(self, _, X):
+        return 1/(1 + np.exp(-X))
+
+    def backprop(self, _, X, Y, out_error):
+        return out_error * Y * (1-Y), np.array([])

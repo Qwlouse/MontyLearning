@@ -10,35 +10,53 @@ docstring
 from __future__ import division, print_function, unicode_literals
 import numpy as np
 from numpy.testing import assert_allclose
-from scipy.optimize import check_grad, approx_fprime
+from scipy.optimize import approx_fprime
 import unittest
 
-from UNN.connections import LinearCombination
+from UNN.connections import LinearCombination, Sigmoid
 from UNN.error_functions import sum_of_squares_error
 
+sigmoid_values = [[4.0, 0.9820137900],
+                   [3.5, 0.9706877692],
+                   [3.0, 0.9525741268],
+                   [2.5, 0.9241418200],
+                   [2.0, 0.8807970780],
+                   [1.5, 0.8175744762],
+                   [1.0, 0.7310585786],
+                   [0.5, 0.6224593312],
+                   [0.0, 0.5],
+                  [-0.5, 0.3775406688],
+                  [-1.0, 0.2689414213],
+                  [-1.5, 0.1824255238],
+                  [-2.0, 0.1192029220],
+                  [-2.5, 0.0758581800],
+                  [-3.0, 0.0474258731],
+                  [-3.5, 0.0293122308],
+                  [-4.0, 0.0179862100]]
 
-class ConnectionTests(unittest.TestCase):
+def assert_backprop_correct(connection, theta, X, T, epsilon=1e-7):
+    Y = connection.forward_pass(theta, X)
+    out_error = Y - T
+    in_error, grad = connection.backprop(theta, X, Y, out_error)
+
+    func_theta = lambda th : sum_of_squares_error(connection.forward_pass(th, X), T)
+    func_x = lambda x, t : sum_of_squares_error(connection.forward_pass(theta, x), t)
+
+    grad_approx = approx_fprime(theta, func_theta, epsilon)
+    assert_allclose(grad, grad_approx, atol=1e-5)
+
+    for x, t, e_in in zip(X, T, in_error) :
+        in_error_approx = approx_fprime(x, func_x, epsilon, t)
+        assert_allclose(e_in, in_error_approx, atol=1e-5)
+
+
+
+class LinearCombinationTests(unittest.TestCase):
     def setUp(self):
         self.theta = np.array([[-1, 1, 0, 1]]).reshape(-1)
         self.X = np.array([[0, 0, 0, 1], [1, 0, 0, 1],[0, 1, 0, 1],[0, 0, 1, 1],[1, 1, 0, 1]])
         self.X_nb = self.X[:,:-1] # no bias included
         self.T = np.array([[1, 0, 2, 1, 1]]).T
-
-    def assert_backprop_correct(self, connection, theta, X, T, epsilon=1e-7):
-        Y = connection.forward_pass(theta, X)
-        out_error = Y - T
-        in_error, grad = connection.backprop(theta, X, Y, out_error)
-
-        func_theta = lambda th : sum_of_squares_error(connection.forward_pass(th, X), T)
-        func_x = lambda x, t : sum_of_squares_error(connection.forward_pass(theta, x), t)
-
-        grad_approx = approx_fprime(theta, func_theta, epsilon)
-        assert_allclose(grad, grad_approx, atol=1e-5)
-
-        for x, t, e_in in zip(X, T, in_error) :
-            in_error_approx = approx_fprime(x, func_x, epsilon, t)
-            assert_allclose(e_in, in_error_approx, atol=1e-5)
-
 
     def test_LinearCombination_dimensions(self):
         lc = LinearCombination(5, 7)
@@ -50,6 +68,7 @@ class ConnectionTests(unittest.TestCase):
         lc = LinearCombination(4, 1)
         for x, t in zip(self.X, self.T):
             t = np.atleast_2d(t)
+            x = np.atleast_2d(x)
             self.assertEqual(lc.forward_pass(self.theta, x), t)
 
     def test_LinearCombination_forward_pass_multi_sample(self):
@@ -64,7 +83,39 @@ class ConnectionTests(unittest.TestCase):
 
     def test_LinearCombination_backprop_multisample(self):
         lc = LinearCombination(4, 1)
-        self.assert_backprop_correct(lc, self.theta, self.X, np.ones_like(self.T))
+        assert_backprop_correct(lc, self.theta, self.X, np.ones_like(self.T))
+
+
+class SigmoidTests(unittest.TestCase):
+    def setUp(self):
+        self.X = np.array([[4., 3.5, 3., 2.5, 2., 1.5, 1., 0.5, 0., -0.5, -1.,
+                            -1.5, -2., -2.5, -3., -3.5, -4.]]).T
+        self.T = np.array([[0.98201379,  0.97068777,  0.95257413,  0.92414182,
+                            0.88079708,  0.81757448,  0.73105858,  0.62245933,
+                            0.5       ,  0.37754067,  0.26894142,  0.18242552,
+                            0.11920292,  0.07585818,  0.04742587,  0.02931223,
+                            0.01798621]]).T
+
+    def test_Sigmoid_dimensions(self):
+        lc = Sigmoid(5, 5)
+        self.assertEqual(lc.input_dim, 5)
+        self.assertEqual(lc.output_dim, 5)
+        self.assertEqual(lc.get_param_dim(), 0)
+
+    def test_Sigmoid_forward_pass_single_samples(self):
+        lc = Sigmoid(1, 1)
+        for x, t in zip(self.X, self.T):
+            t = np.atleast_2d(t)
+            x = np.atleast_2d(x)
+            assert_allclose(lc.forward_pass(np.array([]), x), t)
+
+    def test_Sigmoid_forward_pass_multi_sample(self):
+        lc = Sigmoid(1, 1)
+        assert_allclose(lc.forward_pass(np.array([]), self.X), self.T)
+
+    def test_Sigmoid_backprop_multisample(self):
+        lc = Sigmoid(1, 1)
+        assert_backprop_correct(lc, np.array([]), self.X, np.ones_like(self.T))
 
 
 if __name__ == '__main__':
