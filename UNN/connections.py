@@ -51,7 +51,13 @@ class Sigmoid(object):
         return 0
 
     def forward_pass(self, _, X):
+        assert len(_) == 0
+        assert X.shape[1] == self.input_dim
         return 1/(1 + np.exp(-X))
 
     def backprop(self, _, X, Y, out_error):
+        assert len(_) == 0
+        assert X.shape[1] == self.input_dim
+        assert Y.shape[1] == self.output_dim
+        assert out_error.shape[1] == self.output_dim
         return out_error * Y * (1-Y), np.array([])

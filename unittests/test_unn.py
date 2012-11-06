@@ -10,7 +10,6 @@ docstring
 from __future__ import division, print_function, unicode_literals
 import numpy as np
 from numpy.testing import assert_allclose
-from scipy.optimize import approx_fprime
 import unittest
 
 from UNN.connections import LinearCombination, Sigmoid
@@ -34,20 +33,30 @@ sigmoid_values = [[4.0, 0.9820137900],
                   [-3.5, 0.0293122308],
                   [-4.0, 0.0179862100]]
 
+def approx_fprime(xk, f, epsilon, *args):
+    f0 = f(xk, *args)
+    grad = np.zeros_like(xk, dtype=np.float64).flatten()
+    ei = np.zeros_like(xk, dtype=np.float64).flatten()
+    for k in range(len(ei)):
+        ei[k] = epsilon
+        eis = ei.reshape(*xk.shape)
+        grad[k] = (f(xk + eis, *args) - f0)/epsilon
+        ei[k] = 0.0
+    return grad.reshape(*xk.shape)
+
 def assert_backprop_correct(connection, theta, X, T, epsilon=1e-7):
     Y = connection.forward_pass(theta, X)
     out_error = Y - T
     in_error, grad = connection.backprop(theta, X, Y, out_error)
 
     func_theta = lambda th : sum_of_squares_error(connection.forward_pass(th, X), T)
-    func_x = lambda x, t : sum_of_squares_error(connection.forward_pass(theta, x), t)
+    func_x = lambda x : sum_of_squares_error(connection.forward_pass(theta, x), T)
 
     grad_approx = approx_fprime(theta, func_theta, epsilon)
     assert_allclose(grad, grad_approx, atol=1e-5)
 
-    for x, t, e_in in zip(X, T, in_error) :
-        in_error_approx = approx_fprime(x, func_x, epsilon, t)
-        assert_allclose(e_in, in_error_approx, atol=1e-5)
+    in_error_approx = approx_fprime(X, func_x, epsilon)
+    assert_allclose(in_error, in_error_approx, atol=1e-5)
 
 
 
