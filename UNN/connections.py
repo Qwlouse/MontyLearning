@@ -10,14 +10,44 @@ docstring
 from __future__ import division, print_function, unicode_literals
 import numpy as np
 
-class LinearCombination(object):
-    """
-    Full feed-forward connection without bias.
-    """
+class Connection(object):
     def __init__(self, input_dim, output_dim):
         self.input_dim = input_dim
         self.output_dim = output_dim
 
+    def get_param_dim(self):
+        raise NotImplementedError()
+
+    def forward_pass(self, theta, X):
+        assert len(theta) == self.get_param_dim()
+        assert X.shape[1] == self.input_dim
+        Y = self._forward_pass(theta, X)
+        assert Y.shape[0] == X.shape[0]
+        assert Y.shape[1] == self.output_dim
+        return Y
+
+    def _forward_pass(self, theta, X):
+        raise NotImplementedError()
+
+    def backprop(self, theta, X, Y, out_error):
+        assert len(theta) == self.get_param_dim()
+        assert X.shape[1] == self.input_dim
+        assert Y.shape[1] == self.output_dim
+        assert out_error.shape[1] == self.output_dim
+        in_error, grad = self._backprop(theta, X, Y, out_error)
+        assert in_error.shape == X.shape
+        assert grad.shape == theta.shape
+        return in_error, grad
+
+    def _backprop(self, theta, X, Y, out_error):
+        raise NotImplementedError()
+
+
+
+class LinearCombination(Connection):
+    """
+    Full feed-forward connection without bias.
+    """
     def get_param_dim(self):
         """
         Return the dimension of the parameter-space.
@@ -27,12 +57,12 @@ class LinearCombination(object):
     def unpackTheta(self, theta):
         return theta.reshape(self.input_dim, self.output_dim)
 
-    def forward_pass(self, theta, X):
+    def _forward_pass(self, theta, X):
         W = self.unpackTheta(theta)
         X = np.atleast_2d(X)
         return X.dot(W)
 
-    def backprop(self, theta, X, Y, out_error):
+    def _backprop(self, theta, X, Y, out_error):
         W = self.unpackTheta(theta)
         X = np.atleast_2d(X)
         grad = X.T.dot(out_error).flatten()
@@ -40,24 +70,19 @@ class LinearCombination(object):
         return in_error, grad
 
 
-class Sigmoid(object):
+class Sigmoid(Connection):
     def __init__(self, input_dim, output_dim):
+        super(Sigmoid, self).__init__(input_dim, output_dim)
         if input_dim != output_dim:
             raise ValueError("Input and output dimensions must match!")
-        self.input_dim = input_dim
-        self.output_dim = input_dim
+
 
     def get_param_dim(self):
         return 0
 
-    def forward_pass(self, _, X):
-        assert len(_) == 0
-        assert X.shape[1] == self.input_dim
+    def _forward_pass(self, _, X):
         return 1/(1 + np.exp(-X))
 
-    def backprop(self, _, X, Y, out_error):
-        assert len(_) == 0
-        assert X.shape[1] == self.input_dim
-        assert Y.shape[1] == self.output_dim
-        assert out_error.shape[1] == self.output_dim
+    def _backprop(self, _, X, Y, out_error):
+
         return out_error * Y * (1-Y), np.array([])
