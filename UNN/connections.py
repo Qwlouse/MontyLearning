@@ -10,6 +10,7 @@ docstring
 from __future__ import division, print_function, unicode_literals
 import numpy as np
 
+
 class Connection(object):
     def __init__(self, input_dim, output_dim):
         self.input_dim = input_dim
@@ -48,8 +49,27 @@ class Connection(object):
         raise NotImplementedError()
 
 
+class AdditiveConnection(Connection):
 
-class LinearCombination(Connection):
+    def get_param_dim(self):
+        return 0
+
+    def _forward_pass(self, theta, X_list):
+        i = 0
+        Y = np.zeros((X_list[0].shape[0], self.output_dim))
+        for x in X_list:
+            x_dim = x.shape[1]
+            s = slice(i, i+x_dim)
+            i += x_dim
+            Y += self._split_forward_pass(theta, x, s)
+        return Y
+
+    def _split_forward_pass(self, theta, x, part):
+        return x
+
+
+
+class LinearCombination(AdditiveConnection):
     """
     Full feed-forward connection without bias.
     """
@@ -62,19 +82,9 @@ class LinearCombination(Connection):
     def unpackTheta(self, theta):
         return theta.reshape(self.input_dim, self.output_dim)
 
-    def _forward_pass(self, theta, X_list):
-        W = self.unpackTheta(theta)
-        i = 0
-        Y = np.zeros((X_list[0].shape[0], self.output_dim))
-        for x in X_list:
-            x = np.atleast_2d(x)
-            x_dim = x.shape[1]
-            w = W[i:i+x_dim, :]
-            i += x_dim
-            Y += x.dot(w)
-
-
-        return Y
+    def _split_forward_pass(self, theta, x, part):
+        w = self.unpackTheta(theta)[part, :]
+        return x.dot(w)
 
     def _backprop(self, theta, X, Y, out_error):
         W = self.unpackTheta(theta)
