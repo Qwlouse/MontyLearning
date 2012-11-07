@@ -50,7 +50,6 @@ class Connection(object):
 
 
 class AdditiveConnection(Connection):
-
     def get_param_dim(self):
         return 0
 
@@ -66,6 +65,24 @@ class AdditiveConnection(Connection):
 
     def _split_forward_pass(self, theta, x, part):
         return x
+
+class ConcatenatingConnection(Connection):
+    def get_param_dim(self):
+        return 0
+
+    def _forward_pass(self, theta, X_list):
+        i = 0
+        Y = np.zeros((X_list[0].shape[0], self.output_dim))
+        for x in X_list:
+            x_dim = x.shape[1]
+            s = slice(i, i+x_dim)
+            i += x_dim
+            Y[:, s] = self._split_forward_pass(theta, x, s)
+        return Y
+
+    def _split_forward_pass(self, theta, x, part):
+        return x
+
 
 
 
@@ -94,25 +111,14 @@ class LinearCombination(AdditiveConnection):
         return in_error, grad
 
 
-class Sigmoid(Connection):
+class Sigmoid(ConcatenatingConnection):
     def __init__(self, input_dim, output_dim):
         super(Sigmoid, self).__init__(input_dim, output_dim)
         if input_dim != output_dim:
             raise ValueError("Input and output dimensions must match!")
 
-
-    def get_param_dim(self):
-        return 0
-
-    def _forward_pass(self, _, X_list):
-        Y = np.zeros((X_list[0].shape[0], self.output_dim))
-        i = 0
-        for x in X_list:
-            x_dim = x.shape[1]
-            Y[:, i:i+x_dim] = 1/(1 + np.exp(-x))
-            i += x_dim
-        return Y
+    def _split_forward_pass(self, theta, x, part):
+        return 1/(1 + np.exp(-x))
 
     def _backprop(self, _, X, Y, out_error):
-
         return out_error * Y * (1-Y), np.array([])
