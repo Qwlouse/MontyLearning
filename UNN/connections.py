@@ -72,6 +72,20 @@ class AdditiveConnection(Connection):
     def _split_forward_pass(self, theta, x, part):
         return x
 
+    def _backprop(self, theta, X_list, Y, out_error):
+        i = 0
+        in_error = []
+        for x in X_list:
+            x_dim = x.shape[1]
+            s = slice(i, i+x_dim)
+            i += x_dim
+            in_error.append(self._split_backprop(theta, x, Y, out_error, s))
+        return in_error
+
+    def _split_backprop(self, theta, x, Y, out_error, part):
+        return out_error
+
+
 class ConcatenatingConnection(Connection):
     def get_param_dim(self):
         return 0
@@ -109,7 +123,7 @@ class LinearCombination(AdditiveConnection):
         w = self.unpackTheta(theta)[part, :]
         return x.dot(w)
 
-    def _backprop(self, theta, X, Y, out_error):
+    def _split_backprop(self, theta, X, Y, out_error, part):
         W = self.unpackTheta(theta)
         grad = X.T.dot(out_error).flatten()
         in_error = out_error.dot(W.T)
