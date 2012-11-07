@@ -44,19 +44,21 @@ def approx_fprime(xk, f, epsilon, *args):
         ei[k] = 0.0
     return grad.reshape(*xk.shape)
 
-def assert_backprop_correct(connection, theta, X, T, epsilon=1e-7):
-    Y = connection.forward_pass(theta, [X])
+def assert_backprop_correct(connection, theta, X_list, T, epsilon=1e-7):
+    Y = connection.forward_pass(theta, X_list)
     out_error = Y - T
-    in_error, grad = connection.backprop(theta, X, Y, out_error)
+    in_error, grad = connection.backprop(theta, X_list, Y, out_error)
 
-    func_theta = lambda th : sum_of_squares_error(connection.forward_pass(th, [X]), T)
+    func_theta = lambda th : sum_of_squares_error(connection.forward_pass(th, X_list), T)
     func_x = lambda x : sum_of_squares_error(connection.forward_pass(theta, [x]), T)
 
     grad_approx = approx_fprime(theta, func_theta, epsilon)
     assert_allclose(grad, grad_approx, atol=1e-5)
 
-    in_error_approx = approx_fprime(X, func_x, epsilon)
-    assert_allclose(in_error, in_error_approx, atol=1e-5)
+    stacked_X = np.hstack(tuple(X_list))
+    in_error_approx = approx_fprime(stacked_X, func_x, epsilon)
+    stacked_in_error = np.hstack(tuple(in_error))
+    assert_allclose(stacked_in_error, in_error_approx, atol=1e-5)
 
 
 
@@ -86,13 +88,13 @@ class LinearCombinationTests(unittest.TestCase):
 
     def test_LinearCombination_backprop_multisample_zero_is_zero(self):
         lc = LinearCombination(4, 1)
-        in_error, grad = lc.backprop(self.theta, self.X, self.T, np.zeros_like(self.T))
+        in_error, grad = lc.backprop(self.theta, [self.X], self.T, np.zeros_like(self.T))
         assert_allclose(in_error, np.zeros_like(self.X))
         assert_allclose(grad, np.zeros_like(self.theta))
 
     def test_LinearCombination_backprop_multisample(self):
         lc = LinearCombination(4, 1)
-        assert_backprop_correct(lc, self.theta, self.X, np.ones_like(self.T))
+        assert_backprop_correct(lc, self.theta, [self.X], np.ones_like(self.T))
 
 
 class SigmoidTests(unittest.TestCase):
@@ -124,7 +126,7 @@ class SigmoidTests(unittest.TestCase):
 
     def test_Sigmoid_backprop_multisample(self):
         lc = Sigmoid(1, 1)
-        assert_backprop_correct(lc, np.array([]), self.X, np.ones_like(self.T))
+        assert_backprop_correct(lc, np.array([]), [self.X], np.ones_like(self.T))
 
 
 if __name__ == '__main__':

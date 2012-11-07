@@ -105,7 +105,6 @@ class LinearCombination(AdditiveConnection):
 
     def _backprop(self, theta, X, Y, out_error):
         W = self.unpackTheta(theta)
-        X = np.atleast_2d(X)
         grad = X.T.dot(out_error).flatten()
         in_error = out_error.dot(W.T)
         return in_error, grad
