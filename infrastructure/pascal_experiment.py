@@ -13,14 +13,14 @@ subset = "val"
 #allowed_classes = ['background', 'person', 'void']
 allowed_classes = ['background', 'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'table', 'dog', 'horse', 'motorbike', 'person', 'plant', 'sheep', 'sofa', 'train', 'tv', 'void']
 #prefix = "seg_person_only"
-prefix = "seg_167x167"
-#prefix = "seg_250x250"
+#prefix = "seg_167x167"
+prefix = "seg_250x250"
 
 # Image manipulation
-resize_factor = 0.3333333333333333
+resize_factor = 0.5
 
 # samples_stuff
-all_samples_filename = "{prefix}_{subset}-p{x_pad}x{y_pad}x{z_pad}-1M_background_samples.idx"
+all_samples_filename = "{prefix}_{subset}-p{x_pad}x{y_pad}x{z_pad}-500K_background_samples.idx"
 
 [color]
     pad_mode = "reflect"
@@ -159,7 +159,7 @@ def main():
     class_samples = create_samples(image_dict['label'])
     # reduce number of background samples
     np.random.shuffle(class_samples[0])
-    class_samples[0] = class_samples[0][:1000000]
+    class_samples[0] = class_samples[0][:500000]
     write_samples_to_idx(np.vstack(tuple(class_samples)), ex.options['all_samples_filename'].format(**ex.options))
 
 
