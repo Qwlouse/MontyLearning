@@ -45,12 +45,12 @@ def approx_fprime(xk, f, epsilon, *args):
     return grad.reshape(*xk.shape)
 
 def assert_backprop_correct(connection, theta, X, T, epsilon=1e-7):
-    Y = connection.forward_pass(theta, X)
+    Y = connection.forward_pass(theta, [X])
     out_error = Y - T
     in_error, grad = connection.backprop(theta, X, Y, out_error)
 
-    func_theta = lambda th : sum_of_squares_error(connection.forward_pass(th, X), T)
-    func_x = lambda x : sum_of_squares_error(connection.forward_pass(theta, x), T)
+    func_theta = lambda th : sum_of_squares_error(connection.forward_pass(th, [X]), T)
+    func_x = lambda x : sum_of_squares_error(connection.forward_pass(theta, [x]), T)
 
     grad_approx = approx_fprime(theta, func_theta, epsilon)
     assert_allclose(grad, grad_approx, atol=1e-5)
@@ -78,11 +78,11 @@ class LinearCombinationTests(unittest.TestCase):
         for x, t in zip(self.X, self.T):
             t = np.atleast_2d(t)
             x = np.atleast_2d(x)
-            self.assertEqual(lc.forward_pass(self.theta, x), t)
+            self.assertEqual(lc.forward_pass(self.theta, [x]), t)
 
     def test_LinearCombination_forward_pass_multi_sample(self):
         lc = LinearCombination(4, 1)
-        assert_allclose(lc.forward_pass(self.theta, self.X), self.T)
+        assert_allclose(lc.forward_pass(self.theta, [self.X]), self.T)
 
     def test_LinearCombination_backprop_multisample_zero_is_zero(self):
         lc = LinearCombination(4, 1)
@@ -116,11 +116,11 @@ class SigmoidTests(unittest.TestCase):
         for x, t in zip(self.X, self.T):
             t = np.atleast_2d(t)
             x = np.atleast_2d(x)
-            assert_allclose(lc.forward_pass(np.array([]), x), t)
+            assert_allclose(lc.forward_pass(np.array([]), [x]), t)
 
     def test_Sigmoid_forward_pass_multi_sample(self):
         lc = Sigmoid(1, 1)
-        assert_allclose(lc.forward_pass(np.array([]), self.X), self.T)
+        assert_allclose(lc.forward_pass(np.array([]), [self.X]), self.T)
 
     def test_Sigmoid_backprop_multisample(self):
         lc = Sigmoid(1, 1)

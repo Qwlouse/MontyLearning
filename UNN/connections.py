@@ -18,15 +18,20 @@ class Connection(object):
     def get_param_dim(self):
         raise NotImplementedError()
 
-    def forward_pass(self, theta, X):
+    def forward_pass(self, theta, X_list):
         assert len(theta) == self.get_param_dim()
-        assert X.shape[1] == self.input_dim
-        Y = self._forward_pass(theta, X)
-        assert Y.shape[0] == X.shape[0]
+        in_dim = 0
+        in_len = X_list[0].shape[0]
+        for x in X_list:
+            assert x.shape[0] == in_len
+            in_dim += x.shape[1]
+        assert in_dim == self.input_dim
+        Y = self._forward_pass(theta, X_list)
+        assert Y.shape[0] == X_list[0].shape[0]
         assert Y.shape[1] == self.output_dim
         return Y
 
-    def _forward_pass(self, theta, X):
+    def _forward_pass(self, theta, X_list):
         raise NotImplementedError()
 
     def backprop(self, theta, X, Y, out_error):
@@ -57,10 +62,19 @@ class LinearCombination(Connection):
     def unpackTheta(self, theta):
         return theta.reshape(self.input_dim, self.output_dim)
 
-    def _forward_pass(self, theta, X):
+    def _forward_pass(self, theta, X_list):
         W = self.unpackTheta(theta)
-        X = np.atleast_2d(X)
-        return X.dot(W)
+        i = 0
+        Y = np.zeros((X_list[0].shape[0], self.output_dim))
+        for x in X_list:
+            x = np.atleast_2d(x)
+            x_dim = x.shape[1]
+            w = W[i:i+x_dim, :]
+            i += x_dim
+            Y += x.dot(w)
+
+
+        return Y
 
     def _backprop(self, theta, X, Y, out_error):
         W = self.unpackTheta(theta)
@@ -80,8 +94,14 @@ class Sigmoid(Connection):
     def get_param_dim(self):
         return 0
 
-    def _forward_pass(self, _, X):
-        return 1/(1 + np.exp(-X))
+    def _forward_pass(self, _, X_list):
+        Y = np.zeros((X_list[0].shape[0], self.output_dim))
+        i = 0
+        for x in X_list:
+            x_dim = x.shape[1]
+            Y[:, i:i+x_dim] = 1/(1 + np.exp(-x))
+            i += x_dim
+        return Y
 
     def _backprop(self, _, X, Y, out_error):
 
