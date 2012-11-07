@@ -35,17 +35,23 @@ class Connection(object):
     def _forward_pass(self, theta, X_list):
         raise NotImplementedError()
 
-    def backprop(self, theta, X, Y, out_error):
+    def backprop(self, theta, X_list, Y, out_error):
         assert len(theta) == self.get_param_dim()
-        assert X.shape[1] == self.input_dim
+        in_dim = 0
+        in_len = X_list[0].shape[0]
+        for x in X_list:
+            assert x.shape[0] == in_len
+            in_dim += x.shape[1]
         assert Y.shape[1] == self.output_dim
         assert out_error.shape[1] == self.output_dim
-        in_error, grad = self._backprop(theta, X, Y, out_error)
-        assert in_error.shape == X.shape
+        in_error, grad = self._backprop(theta, X_list, Y, out_error)
+        assert len(in_error) == len(X_list)
+        for x, e in zip(X_list, in_error):
+            assert e.shape == x.shape
         assert grad.shape == theta.shape
         return in_error, grad
 
-    def _backprop(self, theta, X, Y, out_error):
+    def _backprop(self, theta, X_list, Y, out_error):
         raise NotImplementedError()
 
 
