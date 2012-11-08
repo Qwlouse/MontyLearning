@@ -19,7 +19,7 @@ class Connection(object):
     def get_param_dim(self):
         raise NotImplementedError()
 
-    def forward_pass(self, theta, X_list):
+    def forward_pass(self, theta, X_list, out_buf):
         assert theta.shape == (self.get_param_dim(),)
         in_dim = 0
         in_len = X_list[0].shape[0]
@@ -27,11 +27,10 @@ class Connection(object):
             assert x.shape[0] == in_len
             in_dim += x.shape[1]
         assert in_dim == self.input_dim
-        Y = self._forward_pass(theta, X_list)
-        assert Y.shape == (in_len, self.output_dim)
-        return Y
+        assert out_buf.shape == (in_len, self.output_dim)
+        self._forward_pass(theta, X_list, out_buf)
 
-    def _forward_pass(self, theta, X_list):
+    def _forward_pass(self, theta, X_list, out_buf):
         raise NotImplementedError()
 
     def backprop(self, theta, X_list, Y, out_error):
@@ -77,18 +76,18 @@ class AdditiveConnection(Connection):
     def get_param_dim(self):
         return 0
 
-    def _forward_pass(self, theta, X_list):
+    def _forward_pass(self, theta, X_list, out_buf):
         i = 0
-        Y = np.zeros((X_list[0].shape[0], self.output_dim))
+        o = np.zeros_like(out_buf)
         for x in X_list:
             x_dim = x.shape[1]
             s = slice(i, i+x_dim)
             i += x_dim
-            Y += self._split_forward_pass(theta, x, s)
-        return Y
+            self._split_forward_pass(theta, x, o, s)
+            out_buf += o
 
-    def _split_forward_pass(self, theta, x, part):
-        return x
+    def _split_forward_pass(self, theta, x, out_buf, part):
+        out_buf[:] = x
 
     def _backprop(self, theta, X_list, Y, out_error):
         i = 0
@@ -112,18 +111,17 @@ class ConcatenatingConnection(Connection):
     def get_param_dim(self):
         return 0
 
-    def _forward_pass(self, theta, X_list):
+    def _forward_pass(self, theta, X_list, out_buf):
         i = 0
-        Y = np.zeros((X_list[0].shape[0], self.output_dim))
+        out_buf = 0
         for x in X_list:
             x_dim = x.shape[1]
             s = slice(i, i+x_dim)
             i += x_dim
-            Y[:, s] = self._split_forward_pass(theta, x, s)
-        return Y
+            self._split_forward_pass(theta, x,out_buf[:, s], s)
 
-    def _split_forward_pass(self, theta, x, part):
-        return x
+    def _split_forward_pass(self, theta, x, out_buf, part):
+        out_buf[:] = x
 
     def _backprop(self, theta, X_list, Y, out_error):
         i = 0
@@ -157,9 +155,9 @@ class LinearCombination(AdditiveConnection):
     def unpackTheta(self, theta):
         return theta.reshape(self.input_dim, self.output_dim)
 
-    def _split_forward_pass(self, theta, x, part):
+    def _split_forward_pass(self, theta, x, out_buf, part):
         w = self.unpackTheta(theta)[part, :]
-        return x.dot(w)
+        np.dot(x, w, out=out_buf)
 
     def _split_backprop(self, theta, X, Y, out_error, part):
         W = self.unpackTheta(theta)
@@ -183,8 +181,8 @@ class Sigmoid(ConcatenatingConnection):
         if input_dim != output_dim:
             raise ValueError("Input and output dimensions must match!")
 
-    def _split_forward_pass(self, theta, x, part):
-        return 1/(1 + np.exp(-x))
+    def _split_forward_pass(self, theta, x, out_buf, part):
+        out_buf[:] = 1/(1 + np.exp(-x))
 
     def _split_backprop(self, theta, x, y, out_e, part):
         return out_e * y * (1-y)
@@ -196,8 +194,8 @@ class RectifiedLinear(ConcatenatingConnection):
         if input_dim != output_dim:
             raise ValueError("Input and output dimensions must match!")
 
-    def _split_forward_pass(self, theta, x, part):
-        return np.maximum(x, 0)
+    def _split_forward_pass(self, theta, x, out_buf, part):
+        np.maximum(x, 0, out=out_buf)
 
     def _split_backprop(self, theta, x, y, out_e, part):
         in_e = out_e.copy()

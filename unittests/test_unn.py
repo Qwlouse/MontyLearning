@@ -65,10 +65,10 @@ def assert_backprop_correct(connection, theta, X_list, T, epsilon=1e-7):
 
 class LinearCombinationTests(unittest.TestCase):
     def setUp(self):
-        self.theta = np.array([[-1, 1, 0, 1]]).reshape(-1)
-        self.X = np.array([[0, 0, 0, 1], [1, 0, 0, 1],[0, 1, 0, 1],[0, 0, 1, 1],[1, 1, 0, 1]])
+        self.theta = np.array([[-1, 1, 0, 1]], dtype=np.float64).reshape(-1)
+        self.X = np.array([[0, 0, 0, 1], [1, 0, 0, 1],[0, 1, 0, 1],[0, 0, 1, 1],[1, 1, 0, 1]], dtype=np.float64)
         self.X_nb = self.X[:,:-1] # no bias included
-        self.T = np.array([[1, 0, 2, 1, 1]]).T
+        self.T = np.array([[1, 0, 2, 1, 1]], dtype=np.float64).T
 
     def test_dimensions(self):
         lc = LinearCombination(5, 7)
@@ -81,11 +81,15 @@ class LinearCombinationTests(unittest.TestCase):
         for x, t in zip(self.X, self.T):
             t = np.atleast_2d(t)
             x = np.atleast_2d(x)
-            self.assertEqual(lc.forward_pass(self.theta, [x]), t)
+            out_buf = np.zeros_like(t)
+            lc.forward_pass(self.theta, [x], out_buf)
+            self.assertEqual(out_buf, t)
 
     def test_forward_pass_multi_sample(self):
         lc = LinearCombination(4, 1)
-        assert_allclose(lc.forward_pass(self.theta, [self.X]), self.T)
+        out_buf = np.zeros(self.T.shape, dtype=self.T.dtype)
+        lc.forward_pass(self.theta, [self.X], out_buf)
+        assert_allclose(out_buf, self.T)
 
     def test_backprop_multisample_zero_is_zero(self):
         lc = LinearCombination(4, 1)
