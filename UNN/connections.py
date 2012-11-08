@@ -20,7 +20,7 @@ class Connection(object):
         raise NotImplementedError()
 
     def forward_pass(self, theta, X_list):
-        assert len(theta) == self.get_param_dim()
+        assert theta.shape == (self.get_param_dim(),)
         in_dim = 0
         in_len = X_list[0].shape[0]
         for x in X_list:
@@ -28,30 +28,48 @@ class Connection(object):
             in_dim += x.shape[1]
         assert in_dim == self.input_dim
         Y = self._forward_pass(theta, X_list)
-        assert Y.shape[0] == X_list[0].shape[0]
-        assert Y.shape[1] == self.output_dim
+        assert Y.shape == (in_len, self.output_dim)
         return Y
 
     def _forward_pass(self, theta, X_list):
         raise NotImplementedError()
 
     def backprop(self, theta, X_list, Y, out_error):
-        assert len(theta) == self.get_param_dim()
+        assert theta.shape == (self.get_param_dim(),)
         in_dim = 0
         in_len = X_list[0].shape[0]
         for x in X_list:
             assert x.shape[0] == in_len
             in_dim += x.shape[1]
-        assert Y.shape[1] == self.output_dim
-        assert out_error.shape[1] == self.output_dim
-        in_error, grad = self._backprop(theta, X_list, Y, out_error)
+        assert Y.shape == (in_len, self.output_dim)
+        assert out_error.shape == (in_len, self.output_dim)
+        in_error= self._backprop(theta, X_list, Y, out_error)
         assert len(in_error) == len(X_list)
         for x, e in zip(X_list, in_error):
             assert e.shape == x.shape
-        assert grad.shape == theta.shape
-        return in_error, grad
+        return in_error
 
     def _backprop(self, theta, X_list, Y, out_error):
+        raise NotImplementedError()
+
+    def calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
+        assert theta.shape == (self.get_param_dim(),)
+        in_dim = 0
+        in_len = X_list[0].shape[0]
+        for x in X_list:
+            assert x.shape[0] == in_len
+            in_dim += x.shape[1]
+        assert Y.shape == (in_len, self.output_dim)
+        assert out_error.shape == (in_len, self.output_dim)
+        assert len(in_error_list) == len(X_list)
+        for x, e in zip(X_list, in_error_list):
+            assert e.shape == x.shape
+        grad = self._calculate_gradient(theta, X_list, Y, in_error_list, out_error)
+        assert grad.shape == theta.shape
+        return grad
+
+
+    def _calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
         raise NotImplementedError()
 
 
@@ -85,6 +103,10 @@ class AdditiveConnection(Connection):
     def _split_backprop(self, theta, x, Y, out_error, part):
         return out_error
 
+    def _calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
+        return np.array([])
+
+
 
 class ConcatenatingConnection(Connection):
     def get_param_dim(self):
@@ -103,7 +125,23 @@ class ConcatenatingConnection(Connection):
     def _split_forward_pass(self, theta, x, part):
         return x
 
+    def _backprop(self, theta, X_list, Y, out_error):
+        i = 0
+        in_error = []
+        for x in X_list:
+            x_dim = x.shape[1]
+            s = slice(i, i+x_dim)
+            i += x_dim
+            e = out_error[:, s]
+            y = Y[:, s]
+            in_error.append(self._split_backprop(theta, x, y, e, s))
+        return in_error
 
+    def _split_backprop(self, theta, x, Y, out_error, part):
+        return out_error
+
+    def _calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
+        return np.array([])
 
 
 class LinearCombination(AdditiveConnection):
@@ -125,9 +163,18 @@ class LinearCombination(AdditiveConnection):
 
     def _split_backprop(self, theta, X, Y, out_error, part):
         W = self.unpackTheta(theta)
-        grad = X.T.dot(out_error).flatten()
+        #
         in_error = out_error.dot(W.T)
-        return in_error, grad
+        return in_error
+
+    def _calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
+        grad = np.zeros_like(theta)
+        i = 0
+        for x in X_list:
+            g = x.T.dot(out_error).flatten()
+            grad[i:i+len(g)] = g
+            i += len(g)
+        return grad
 
 
 class Sigmoid(ConcatenatingConnection):
@@ -139,5 +186,5 @@ class Sigmoid(ConcatenatingConnection):
     def _split_forward_pass(self, theta, x, part):
         return 1/(1 + np.exp(-x))
 
-    def _backprop(self, _, X, Y, out_error):
-        return out_error * Y * (1-Y), np.array([])
+    def _split_backprop(self, _, X, Y, out_error, part):
+        return out_error * Y * (1-Y)
