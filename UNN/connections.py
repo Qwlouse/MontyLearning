@@ -137,8 +137,8 @@ class ConcatenatingConnection(Connection):
             in_error.append(self._split_backprop(theta, x, y, e, s))
         return in_error
 
-    def _split_backprop(self, theta, x, Y, out_error, part):
-        return out_error
+    def _split_backprop(self, theta, x, y, out_e, part):
+        return out_e
 
     def _calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
         return np.array([])
@@ -186,5 +186,20 @@ class Sigmoid(ConcatenatingConnection):
     def _split_forward_pass(self, theta, x, part):
         return 1/(1 + np.exp(-x))
 
-    def _split_backprop(self, _, X, Y, out_error, part):
-        return out_error * Y * (1-Y)
+    def _split_backprop(self, theta, x, y, out_e, part):
+        return out_e * y * (1-y)
+
+
+class RectifiedLinear(ConcatenatingConnection):
+    def __init__(self, input_dim, output_dim):
+        super(RectifiedLinear, self).__init__(input_dim, output_dim)
+        if input_dim != output_dim:
+            raise ValueError("Input and output dimensions must match!")
+
+    def _split_forward_pass(self, theta, x, part):
+        return np.maximum(x, 0)
+
+    def _split_backprop(self, theta, x, y, out_e, part):
+        in_e = out_e.copy()
+        in_e[y == 0] = 0
+        return in_e

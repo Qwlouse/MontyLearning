@@ -130,6 +130,31 @@ class SigmoidTests(unittest.TestCase):
         lc = Sigmoid(1, 1)
         assert_backprop_correct(lc, np.array([]), [self.X], np.ones_like(self.T))
 
+class RectifiedLinearTests(unittest.TestCase):
+    def setUp(self):
+        self.X = np.arange(-4, 4, 0.3).reshape(-1, 1)
+        self.T = np.array([max(0., x) for x in self.X]).reshape(-1, 1)
+
+    def test_dimensions(self):
+        lc = RectifiedLinear(5, 5)
+        self.assertEqual(lc.input_dim, 5)
+        self.assertEqual(lc.output_dim, 5)
+        self.assertEqual(lc.get_param_dim(), 0)
+
+    def test_forward_pass_single_samples(self):
+        lc = RectifiedLinear(1, 1)
+        for x, t in zip(self.X, self.T):
+            t = np.atleast_2d(t)
+            x = np.atleast_2d(x)
+            assert_allclose(lc.forward_pass(np.array([]), [x]), t)
+
+    def test_forward_pass_multi_sample(self):
+        lc = RectifiedLinear(1, 1)
+        assert_allclose(lc.forward_pass(np.array([]), [self.X]), self.T)
+
+    def test_backprop_multisample(self):
+        lc = RectifiedLinear(1, 1)
+        assert_backprop_correct(lc, np.array([]), [self.X], np.ones_like(self.T))
 
 if __name__ == '__main__':
     unittest.main()
