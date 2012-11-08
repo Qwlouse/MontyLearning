@@ -12,7 +12,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import unittest
 
-from UNN.connections import LinearCombination, Sigmoid
+from UNN.connections import LinearCombination, Sigmoid, RectifiedLinear
 from UNN.error_functions import sum_of_squares_error
 
 sigmoid_values = [[4.0, 0.9820137900],
@@ -70,31 +70,31 @@ class LinearCombinationTests(unittest.TestCase):
         self.X_nb = self.X[:,:-1] # no bias included
         self.T = np.array([[1, 0, 2, 1, 1]]).T
 
-    def test_LinearCombination_dimensions(self):
+    def test_dimensions(self):
         lc = LinearCombination(5, 7)
         self.assertEqual(lc.input_dim, 5)
         self.assertEqual(lc.output_dim, 7)
         self.assertEqual(lc.get_param_dim(), 5*7)
 
-    def test_LinearCombination_forward_pass_single_samples(self):
+    def test_forward_pass_single_samples(self):
         lc = LinearCombination(4, 1)
         for x, t in zip(self.X, self.T):
             t = np.atleast_2d(t)
             x = np.atleast_2d(x)
             self.assertEqual(lc.forward_pass(self.theta, [x]), t)
 
-    def test_LinearCombination_forward_pass_multi_sample(self):
+    def test_forward_pass_multi_sample(self):
         lc = LinearCombination(4, 1)
         assert_allclose(lc.forward_pass(self.theta, [self.X]), self.T)
 
-    def test_LinearCombination_backprop_multisample_zero_is_zero(self):
+    def test_backprop_multisample_zero_is_zero(self):
         lc = LinearCombination(4, 1)
         in_error_list = lc.backprop(self.theta, [self.X], self.T, np.zeros_like(self.T))
         grad = lc.calculate_gradient(self.theta, [self.X], self.T, in_error_list, np.zeros_like(self.T))
         assert_allclose(in_error_list[0], np.zeros_like(self.X))
         assert_allclose(grad, np.zeros_like(self.theta))
 
-    def test_LinearCombination_backprop_multisample(self):
+    def test_backprop_multisample(self):
         lc = LinearCombination(4, 1)
         assert_backprop_correct(lc, self.theta, [self.X], np.ones_like(self.T))
 
@@ -109,24 +109,24 @@ class SigmoidTests(unittest.TestCase):
                             0.11920292,  0.07585818,  0.04742587,  0.02931223,
                             0.01798621]]).T
 
-    def test_Sigmoid_dimensions(self):
+    def test_dimensions(self):
         lc = Sigmoid(5, 5)
         self.assertEqual(lc.input_dim, 5)
         self.assertEqual(lc.output_dim, 5)
         self.assertEqual(lc.get_param_dim(), 0)
 
-    def test_Sigmoid_forward_pass_single_samples(self):
+    def test_forward_pass_single_samples(self):
         lc = Sigmoid(1, 1)
         for x, t in zip(self.X, self.T):
             t = np.atleast_2d(t)
             x = np.atleast_2d(x)
             assert_allclose(lc.forward_pass(np.array([]), [x]), t)
 
-    def test_Sigmoid_forward_pass_multi_sample(self):
+    def test_forward_pass_multi_sample(self):
         lc = Sigmoid(1, 1)
         assert_allclose(lc.forward_pass(np.array([]), [self.X]), self.T)
 
-    def test_Sigmoid_backprop_multisample(self):
+    def test_backprop_multisample(self):
         lc = Sigmoid(1, 1)
         assert_backprop_correct(lc, np.array([]), [self.X], np.ones_like(self.T))
 
