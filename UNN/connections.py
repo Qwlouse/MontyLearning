@@ -17,9 +17,22 @@ class Connection(object):
         self.output_dim = output_dim
 
     def get_param_dim(self):
+        """
+        Return the number of parameters of this connection.
+        """
         raise NotImplementedError()
 
     def forward_pass(self, theta, X_list, out_buf):
+        """
+        Do one forward pass of this connection and write the result to out_buf.
+
+        :param theta: 1d array of parameter values to be used
+        :param X_list: list of 2d arrays to be used as input. Each entry in the
+                       list should be a N x m array were N is the number of
+                       samples and m < input_dim is a subset of the input dims.
+        :param out_buf: 2d array with size N x output_dim to which the results
+                        get written.
+        """
         assert theta.shape == (self.get_param_dim(),)
         in_dim = 0
         in_len = X_list[0].shape[0]
