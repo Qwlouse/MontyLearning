@@ -48,8 +48,9 @@ def assert_backprop_correct(connection, theta, X_list, T, epsilon=1e-7):
     Y = np.zeros(T.shape, dtype=T.dtype)
     connection.forward_pass(theta, X_list, Y)
     out_error = Y - T
-    in_error_list = connection.backprop(theta, X_list, Y, out_error)
-    grad = connection.calculate_gradient(theta, X_list, Y, in_error_list, out_error)
+    in_error_buffers = [np.zeros_like(x) for x in X_list]
+    connection.backprop(theta, X_list, Y, out_error, in_error_buffers)
+    grad = connection.calculate_gradient(theta, X_list, Y, in_error_buffers, out_error)
     out_buf = np.zeros_like(Y)
     def func_theta(th):
         connection.forward_pass(th, X_list, out_buf)
@@ -64,7 +65,7 @@ def assert_backprop_correct(connection, theta, X_list, T, epsilon=1e-7):
 
     stacked_X = np.hstack(tuple(X_list))
     in_error_approx = approx_fprime(stacked_X, func_x, epsilon)
-    stacked_in_error = np.hstack(tuple(in_error_list))
+    stacked_in_error = np.hstack(tuple(in_error_buffers))
     assert_allclose(stacked_in_error, in_error_approx, atol=1e-5)
 
 
@@ -99,9 +100,10 @@ class LinearCombinationTests(unittest.TestCase):
 
     def test_backprop_multisample_zero_is_zero(self):
         lc = LinearCombination(4, 1)
-        in_error_list = lc.backprop(self.theta, [self.X], self.T, np.zeros_like(self.T))
-        grad = lc.calculate_gradient(self.theta, [self.X], self.T, in_error_list, np.zeros_like(self.T))
-        assert_allclose(in_error_list[0], np.zeros_like(self.X))
+        in_error_buffers = [np.zeros_like(self.X)]
+        lc.backprop(self.theta, [self.X], self.T, np.zeros_like(self.T), in_error_buffers)
+        grad = lc.calculate_gradient(self.theta, [self.X], self.T, in_error_buffers, np.zeros_like(self.T))
+        assert_allclose(in_error_buffers[0], np.zeros_like(self.X))
         assert_allclose(grad, np.zeros_like(self.theta))
 
     def test_backprop_multisample(self):

@@ -33,7 +33,7 @@ class Connection(object):
     def _forward_pass(self, theta, X_list, out_buf):
         raise NotImplementedError()
 
-    def backprop(self, theta, X_list, Y, out_error):
+    def backprop(self, theta, X_list, Y, out_error, in_error_buffers):
         assert theta.shape == (self.get_param_dim(),)
         in_dim = 0
         in_len = X_list[0].shape[0]
@@ -42,13 +42,12 @@ class Connection(object):
             in_dim += x.shape[1]
         assert Y.shape == (in_len, self.output_dim)
         assert out_error.shape == (in_len, self.output_dim)
-        in_error= self._backprop(theta, X_list, Y, out_error)
-        assert len(in_error) == len(X_list)
-        for x, e in zip(X_list, in_error):
+        assert len(in_error_buffers) == len(X_list)
+        for x, e in zip(X_list, in_error_buffers):
             assert e.shape == x.shape
-        return in_error
+        self._backprop(theta, X_list, Y, out_error, in_error_buffers)
 
-    def _backprop(self, theta, X_list, Y, out_error):
+    def _backprop(self, theta, X_list, Y, out_error, in_error_buffers):
         raise NotImplementedError()
 
     def calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
@@ -90,18 +89,16 @@ class AdditiveConnection(Connection):
     def _split_forward_pass(self, theta, x, out_buf, part):
         out_buf[:] = x
 
-    def _backprop(self, theta, X_list, Y, out_error):
+    def _backprop(self, theta, X_list, Y, out_error, in_error_buffers):
         i = 0
-        in_error = []
-        for x in X_list:
+        for x, in_error_buf in zip(X_list, in_error_buffers):
             x_dim = x.shape[1]
             s = slice(i, i+x_dim)
             i += x_dim
-            in_error.append(self._split_backprop(theta, x, Y, out_error, s))
-        return in_error
+            self._split_backprop(theta, x, Y, out_error, in_error_buf, s)
 
-    def _split_backprop(self, theta, x, Y, out_error, part):
-        return out_error
+    def _split_backprop(self, theta, x, Y, out_error, in_error_buf, part):
+        in_error_buf[:] = out_error
 
     def _calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
         return np.array([])
@@ -124,20 +121,19 @@ class ConcatenatingConnection(Connection):
     def _split_forward_pass(self, theta, x, out_buf, part):
         out_buf[:] = x
 
-    def _backprop(self, theta, X_list, Y, out_error):
+    def _backprop(self, theta, X_list, Y, out_error, in_error_buffers):
         i = 0
-        in_error = []
-        for x in X_list:
+        for x, in_error_buf in zip(X_list, in_error_buffers):
             x_dim = x.shape[1]
             s = slice(i, i+x_dim)
             i += x_dim
             e = out_error[:, s]
             y = Y[:, s]
-            in_error.append(self._split_backprop(theta, x, y, e, s))
-        return in_error
+            self._split_backprop(theta, x, y, e, in_error_buf, s)
 
-    def _split_backprop(self, theta, x, y, out_e, part):
-        return out_e
+
+    def _split_backprop(self, theta, x, y, out_e, in_error_buf, part):
+        in_error_buf[:] = out_e
 
     def _calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
         return np.array([])
@@ -160,11 +156,9 @@ class LinearCombination(AdditiveConnection):
         w = self.unpackTheta(theta)[part, :]
         np.dot(x, w, out=out_buf)
 
-    def _split_backprop(self, theta, X, Y, out_error, part):
+    def _split_backprop(self, theta, X, Y, out_error, in_error_buf, part):
         W = self.unpackTheta(theta)
-        #
-        in_error = out_error.dot(W.T)
-        return in_error
+        np.dot(out_error, W.T, out=in_error_buf)
 
     def _calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
         grad = np.zeros_like(theta)
@@ -185,8 +179,8 @@ class Sigmoid(ConcatenatingConnection):
     def _split_forward_pass(self, theta, x, out_buf, part):
         out_buf[:] = 1/(1 + np.exp(-x))
 
-    def _split_backprop(self, theta, x, y, out_e, part):
-        return out_e * y * (1-y)
+    def _split_backprop(self, theta, x, y, out_e, in_error_buf, part):
+        in_error_buf[:] = out_e * y * (1-y)
 
 
 class RectifiedLinear(ConcatenatingConnection):
@@ -198,7 +192,6 @@ class RectifiedLinear(ConcatenatingConnection):
     def _split_forward_pass(self, theta, x, out_buf, part):
         np.maximum(x, 0, out=out_buf)
 
-    def _split_backprop(self, theta, x, y, out_e, part):
-        in_e = out_e.copy()
-        in_e[y == 0] = 0
-        return in_e
+    def _split_backprop(self, theta, x, y, out_e, in_error_buf, part):
+        in_error_buf[:] = out_e.copy()
+        in_error_buf[y == 0] = 0
