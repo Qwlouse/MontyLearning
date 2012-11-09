@@ -50,7 +50,8 @@ def assert_backprop_correct(connection, theta, X_list, T, epsilon=1e-7):
     out_error = Y - T
     in_error_buffers = [np.zeros_like(x) for x in X_list]
     connection.backprop(theta, X_list, Y, out_error, in_error_buffers)
-    grad = connection.calculate_gradient(theta, X_list, Y, in_error_buffers, out_error)
+    grad = np.zeros_like(theta)
+    connection.calculate_gradient(theta, grad, X_list, Y, in_error_buffers, out_error)
     out_buf = np.zeros_like(Y)
     def func_theta(th):
         connection.forward_pass(th, X_list, out_buf)
@@ -102,7 +103,8 @@ class LinearCombinationTests(unittest.TestCase):
         lc = LinearCombination(4, 1)
         in_error_buffers = [np.zeros_like(self.X)]
         lc.backprop(self.theta, [self.X], self.T, np.zeros_like(self.T), in_error_buffers)
-        grad = lc.calculate_gradient(self.theta, [self.X], self.T, in_error_buffers, np.zeros_like(self.T))
+        grad = np.zeros_like(self.theta)
+        lc.calculate_gradient(self.theta, grad, [self.X], self.T, in_error_buffers, np.zeros_like(self.T))
         assert_allclose(in_error_buffers[0], np.zeros_like(self.X))
         assert_allclose(grad, np.zeros_like(self.theta))
 

@@ -50,7 +50,7 @@ class Connection(object):
     def _backprop(self, theta, X_list, Y, out_error, in_error_buffers):
         raise NotImplementedError()
 
-    def calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
+    def calculate_gradient(self, theta, grad_buf, X_list, Y, in_error_list, out_error):
         assert theta.shape == (self.get_param_dim(),)
         in_dim = 0
         in_len = X_list[0].shape[0]
@@ -62,13 +62,12 @@ class Connection(object):
         assert len(in_error_list) == len(X_list)
         for x, e in zip(X_list, in_error_list):
             assert e.shape == x.shape
-        grad = self._calculate_gradient(theta, X_list, Y, in_error_list, out_error)
-        assert grad.shape == theta.shape
-        return grad
+        assert grad_buf.shape == theta.shape
+        self._calculate_gradient(theta, grad_buf, X_list, Y, in_error_list, out_error)
 
 
-    def _calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
-        raise NotImplementedError()
+    def _calculate_gradient(self, theta, grad_buf, X_list, Y, in_error_list, out_error):
+        pass
 
 
 class AdditiveConnection(Connection):
@@ -99,9 +98,6 @@ class AdditiveConnection(Connection):
 
     def _split_backprop(self, theta, x, Y, out_error, in_error_buf, part):
         in_error_buf[:] = out_error
-
-    def _calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
-        return np.array([])
 
 
 
@@ -135,8 +131,6 @@ class ConcatenatingConnection(Connection):
     def _split_backprop(self, theta, x, y, out_e, in_error_buf, part):
         in_error_buf[:] = out_e
 
-    def _calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
-        return np.array([])
 
 
 class LinearCombination(AdditiveConnection):
@@ -160,14 +154,12 @@ class LinearCombination(AdditiveConnection):
         W = self.unpackTheta(theta)
         np.dot(out_error, W.T, out=in_error_buf)
 
-    def _calculate_gradient(self, theta, X_list, Y, in_error_list, out_error):
-        grad = np.zeros_like(theta)
+    def _calculate_gradient(self, theta, grad_buf, X_list, Y, in_error_list, out_error):
         i = 0
         for x in X_list:
             g = x.T.dot(out_error).flatten()
-            grad[i:i+len(g)] = g
+            grad_buf[i:i+len(g)] += g
             i += len(g)
-        return grad
 
 
 class Sigmoid(ConcatenatingConnection):
