@@ -82,6 +82,22 @@ class Connection(object):
     def _calculate_gradient(self, theta, grad_buf, X_list, Y, in_error_list, out_error):
         pass
 
+    def create_out_buf(self, N, dtype=np.float):
+        return np.zeros((N, self.output_dim), dtype=dtype)
+
+    def create_out_buf_like(self, X_list):
+        return self.create_out_buf(X_list[0].shape[0], dtype=X_list[0].dtype)
+
+    def create_in_error_buffers(self, N, dims, dtype=np.float):
+        return [np.zeros((N, d), dtype=dtype) for d in dims]
+
+    def create_in_error_buffers_like(self, X_list):
+        return self.create_in_error_buffers(X_list[0].shape[0],
+            [x.shape[1] for x in X_list])
+
+    def create_grad_buf(self, dtype=np.float):
+        return np.zeros((self.get_param_dim(),), dtype=dtype)
+
 
 class AdditiveConnection(Connection):
     def get_param_dim(self):

@@ -48,11 +48,11 @@ def assert_backprop_correct(connection, theta, X_list, T, epsilon=1e-7):
     Y = np.zeros(T.shape, dtype=T.dtype)
     connection.forward_pass(theta, X_list, Y)
     out_error = Y - T
-    in_error_buffers = [np.zeros_like(x) for x in X_list]
+    in_error_buffers = connection.create_in_error_buffers_like(X_list)
     connection.backprop(theta, X_list, Y, out_error, in_error_buffers)
-    grad = np.zeros_like(theta)
+    grad = connection.create_grad_buf()
     connection.calculate_gradient(theta, grad, X_list, Y, in_error_buffers, out_error)
-    out_buf = np.zeros_like(Y)
+    out_buf = connection.create_out_buf_like(X_list)
     def func_theta(th):
         connection.forward_pass(th, X_list, out_buf)
         return sum_of_squares_error(out_buf, T)
