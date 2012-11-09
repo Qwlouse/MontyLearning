@@ -79,6 +79,7 @@ class AdditiveConnection(Connection):
     def _forward_pass(self, theta, X_list, out_buf):
         i = 0
         o = np.zeros_like(out_buf)
+        out_buf[:] = 0
         for x in X_list:
             x_dim = x.shape[1]
             s = slice(i, i+x_dim)
@@ -113,7 +114,7 @@ class ConcatenatingConnection(Connection):
 
     def _forward_pass(self, theta, X_list, out_buf):
         i = 0
-        out_buf = 0
+        out_buf[:] = 0
         for x in X_list:
             x_dim = x.shape[1]
             s = slice(i, i+x_dim)

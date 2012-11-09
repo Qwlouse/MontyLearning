@@ -45,13 +45,19 @@ def approx_fprime(xk, f, epsilon, *args):
     return grad.reshape(*xk.shape)
 
 def assert_backprop_correct(connection, theta, X_list, T, epsilon=1e-7):
-    Y = connection.forward_pass(theta, X_list)
+    Y = np.zeros(T.shape, dtype=T.dtype)
+    connection.forward_pass(theta, X_list, Y)
     out_error = Y - T
     in_error_list = connection.backprop(theta, X_list, Y, out_error)
     grad = connection.calculate_gradient(theta, X_list, Y, in_error_list, out_error)
+    out_buf = np.zeros_like(Y)
+    def func_theta(th):
+        connection.forward_pass(th, X_list, out_buf)
+        return sum_of_squares_error(out_buf, T)
 
-    func_theta = lambda th : sum_of_squares_error(connection.forward_pass(th, X_list), T)
-    func_x = lambda x : sum_of_squares_error(connection.forward_pass(theta, [x]), T)
+    def func_x(x):
+        connection.forward_pass(theta, [x], out_buf)
+        return sum_of_squares_error(out_buf, T)
 
     grad_approx = approx_fprime(theta, func_theta, epsilon)
     assert_allclose(grad, grad_approx, atol=1e-5)
@@ -124,11 +130,15 @@ class SigmoidTests(unittest.TestCase):
         for x, t in zip(self.X, self.T):
             t = np.atleast_2d(t)
             x = np.atleast_2d(x)
-            assert_allclose(lc.forward_pass(np.array([]), [x]), t)
+            out_buf = np.zeros_like(t)
+            lc.forward_pass(np.array([]), [x], out_buf)
+            assert_allclose(out_buf, t)
 
     def test_forward_pass_multi_sample(self):
         lc = Sigmoid(1, 1)
-        assert_allclose(lc.forward_pass(np.array([]), [self.X]), self.T)
+        out_buf = np.zeros(self.T.shape, dtype=self.T.dtype)
+        lc.forward_pass(np.array([]), [self.X], out_buf)
+        assert_allclose(out_buf, self.T)
 
     def test_backprop_multisample(self):
         lc = Sigmoid(1, 1)
@@ -150,11 +160,15 @@ class RectifiedLinearTests(unittest.TestCase):
         for x, t in zip(self.X, self.T):
             t = np.atleast_2d(t)
             x = np.atleast_2d(x)
-            assert_allclose(lc.forward_pass(np.array([]), [x]), t)
+            out_buf = np.zeros_like(t)
+            lc.forward_pass(np.array([]), [x], out_buf)
+            assert_allclose(out_buf, t)
 
     def test_forward_pass_multi_sample(self):
         lc = RectifiedLinear(1, 1)
-        assert_allclose(lc.forward_pass(np.array([]), [self.X]), self.T)
+        out_buf = np.zeros(self.T.shape, dtype=self.T.dtype)
+        lc.forward_pass(np.array([]), [self.X], out_buf)
+        assert_allclose(out_buf, self.T)
 
     def test_backprop_multisample(self):
         lc = RectifiedLinear(1, 1)
