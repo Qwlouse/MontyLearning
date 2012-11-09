@@ -13,6 +13,7 @@ from numpy.testing import assert_allclose
 import unittest
 
 from UNN.connections import LinearCombination, Sigmoid, RectifiedLinear
+from UNN.containers import SequentialContainerConnection
 from UNN.error_functions import sum_of_squares_error
 
 sigmoid_values = [[4.0, 0.9820137900],
@@ -75,7 +76,6 @@ class LinearCombinationTests(unittest.TestCase):
     def setUp(self):
         self.theta = np.array([[-1, 1, 0, 1]], dtype=np.float64).reshape(-1)
         self.X = np.array([[0, 0, 0, 1], [1, 0, 0, 1],[0, 1, 0, 1],[0, 0, 1, 1],[1, 1, 0, 1]], dtype=np.float64)
-        self.X_nb = self.X[:,:-1] # no bias included
         self.T = np.array([[1, 0, 2, 1, 1]], dtype=np.float64).T
 
     def test_dimensions(self):
@@ -177,6 +177,58 @@ class RectifiedLinearTests(unittest.TestCase):
     def test_backprop_multisample(self):
         lc = RectifiedLinear(1, 1)
         assert_backprop_correct(lc, np.array([]), [self.X], np.ones_like(self.T))
+
+
+class SequentialContainerConnectionTests(unittest.TestCase):
+    def setUp(self):
+        self.theta = np.array([[-1, 1, 0, 1]], dtype=np.float64).reshape(-1)
+        self.X = np.array([[0, 0, 0, 1], [1, 0, 0, 1],[0, 1, 0, 1],[0, 0, 1, 1],[1, 1, 0, 1]], dtype=np.float64)
+        self.T = np.array([[0.73105858], [ 0.5],[0.88079708],[0.73105858],[0.73105858]])
+
+    def test_dimensions(self):
+        lc = LinearCombination(5, 7)
+        sig = Sigmoid(7, 7)
+        scc = SequentialContainerConnection(5, 7, [lc, sig])
+        self.assertEqual(scc.input_dim, 5)
+        self.assertEqual(scc.output_dim, 7)
+        self.assertEqual(scc.get_param_dim(), 5*7)
+
+    def test_forward_pass_single_samples(self):
+        lc = LinearCombination(4, 1)
+        sig = Sigmoid(1, 1)
+        scc = SequentialContainerConnection(4, 1, [lc, sig])
+        for x, t in zip(self.X, self.T):
+            t = np.atleast_2d(t)
+            x = np.atleast_2d(x)
+            out_buf = np.zeros_like(t)
+            scc.forward_pass(self.theta, [x], out_buf)
+            assert_allclose(out_buf, t)
+
+    def test_forward_pass_multi_sample(self):
+        lc = LinearCombination(4, 1)
+        sig = Sigmoid(1, 1)
+        scc = SequentialContainerConnection(4, 1, [lc, sig])
+        out_buf = np.zeros(self.T.shape, dtype=self.T.dtype)
+        scc.forward_pass(self.theta, [self.X], out_buf)
+        assert_allclose(out_buf, self.T)
+
+    def test_backprop_multisample_zero_is_zero(self):
+        lc = LinearCombination(4, 1)
+        sig = Sigmoid(1, 1)
+        scc = SequentialContainerConnection(4, 1, [lc, sig])
+        in_error_buffers = [np.zeros_like(self.X)]
+        scc.backprop(self.theta, [self.X], self.T, np.zeros_like(self.T), in_error_buffers)
+        grad = np.zeros_like(self.theta)
+        scc.calculate_gradient(self.theta, grad, [self.X], self.T, in_error_buffers, np.zeros_like(self.T))
+        assert_allclose(in_error_buffers[0], np.zeros_like(self.X))
+        assert_allclose(grad, np.zeros_like(self.theta))
+
+    def test_backprop_multisample(self):
+        lc = LinearCombination(4, 1)
+        sig = Sigmoid(1, 1)
+        scc = SequentialContainerConnection(4, 1, [lc, sig])
+        assert_backprop_correct(scc, self.theta, [self.X], np.ones_like(self.T))
+
 
 if __name__ == '__main__':
     unittest.main()
